@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+      background: #0f172a; color: #e2e8f0; font-size: 13px; overflow-x: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #0d9488, #14b8a6);
+      padding: 14px 16px 10px; position: relative; overflow: hidden;
+    }
+    .header::after {
+      content: ''; position: absolute; top: -30%; right: -10%;
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+    }
+    .header h1 { font-size: 16px; font-weight: 800; color: #fff; }
+    .header p { font-size: 11px; color: rgba(255,255,255,0.75); margin-top: 2px; }
+
+    .steps-bar { display: flex; padding: 0 16px 10px; gap: 6px; background: #0f172a; }
+    .step-indicator {
+      flex: 1; height: 4px; border-radius: 2px;
+      background: #1e293b; transition: all 0.3s;
+    }
+    .step-indicator.active {
+      background: linear-gradient(90deg, #0d9488, #14b8a6);
+      box-shadow: 0 0 8px rgba(13,148,136,0.4);
+    }
+    .step-indicator.done { background: #14b8a6; }
+
+    .step-title {
+      background: #0f172a; color: #fff; padding: 4px 16px 10px;
+      font-size: 14px; font-weight: 700;
+    }
+    .step-title span { color: #64748b; font-weight: 400; font-size: 11px; margin-left: 8px; }
+
+    .content { padding: 10px 16px; height: 420px; overflow-y: auto; }
+    .content::-webkit-scrollbar { width: 4px; }
+    .content::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+    /* ── Platform Grid ───────────────────── */
+    .platform-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .platform-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 14px 8px; border: 2px solid #1e293b; border-radius: 12px;
+      background: #1e293b; cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .platform-btn:hover { border-color: #0d9488; background: #0f2b2a; }
+    .platform-btn.selected {
+      border-color: #14b8a6; background: #042f2e;
+      box-shadow: 0 0 16px rgba(13,148,136,0.2);
+    }
+    .platform-btn .icon { font-size: 22px; margin-bottom: 4px; }
+    .platform-btn .name { font-weight: 600; font-size: 12px; color: #e2e8f0; }
+    .platform-btn .dims { font-size: 10px; color: #64748b; margin-top: 2px; }
+
+    .toggle-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 10px; padding: 10px 14px;
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+    }
+    .toggle-row label { font-size: 12px; font-weight: 500; color: #94a3b8; cursor: pointer; flex: 1; }
+    .toggle-switch {
+      position: relative; width: 38px; height: 22px; flex-shrink: 0;
+      background: #334155; border-radius: 11px; cursor: pointer; transition: all 0.2s;
+    }
+    .toggle-switch.on {
+      background: linear-gradient(135deg, #0d9488, #14b8a6);
+      box-shadow: 0 0 12px rgba(13,148,136,0.3);
+    }
+    .toggle-switch .knob {
+      position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; background: #fff;
+      border-radius: 50%; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .toggle-switch.on .knob { left: 19px; }
+
+    /* ── AI Mode Badge ───────────────────── */
+    .ai-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      color: #fff; letter-spacing: 0.5px;
+    }
+    .toggle-row.ai-row { border-color: #4c1d95; background: #1a0f2e; }
+    .toggle-row.ai-row .toggle-switch.on {
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      box-shadow: 0 0 12px rgba(124,58,237,0.3);
+    }
+
+    /* ── API Key Section ─────────────────── */
+    .api-key-section {
+      margin-top: 8px; padding: 10px 14px;
+      background: #1a0f2e; border: 1px solid #4c1d95; border-radius: 10px;
+    }
+    .api-key-section.hidden { display: none; }
+    .api-key-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 8px;
+    }
+    .api-key-header h4 { font-size: 12px; font-weight: 600; color: #c4b5fd; }
+    .api-key-status {
+      font-size: 10px; padding: 2px 8px; border-radius: 4px;
+    }
+    .api-key-status.connected { background: #064e3b; color: #6ee7b7; }
+    .api-key-status.missing { background: #450a0a; color: #fca5a5; }
+    .api-key-input-row { display: flex; gap: 6px; }
+    .api-key-input-row input {
+      flex: 1; padding: 8px 10px; border: 1.5px solid #4c1d95; border-radius: 8px;
+      font-family: monospace; font-size: 11px; color: #c4b5fd;
+      background: #0f0720; outline: none;
+    }
+    .api-key-input-row input:focus { border-color: #a855f7; }
+    .api-key-input-row input::placeholder { color: #6b21a8; }
+    .save-key-btn {
+      padding: 8px 14px; border: none; border-radius: 8px;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      color: #fff; font-family: inherit; font-size: 11px;
+      font-weight: 600; cursor: pointer;
+    }
+    .save-key-btn:hover { opacity: 0.9; }
+    .api-key-hint {
+      font-size: 10px; color: #7c3aed; margin-top: 6px;
+    }
+    .api-key-hint a { color: #a855f7; text-decoration: underline; }
+
+    /* ── Pillar Tabs ─────────────────────── */
+    .pillar-tabs { display: flex; gap: 4px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 2px; }
+    .pillar-tabs::-webkit-scrollbar { height: 0; }
+    .pillar-tab {
+      padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;
+      white-space: nowrap; cursor: pointer; border: 1.5px solid #334155;
+      background: #1e293b; color: #94a3b8; transition: all 0.2s;
+    }
+    .pillar-tab:hover { border-color: #0d9488; color: #e2e8f0; }
+    .pillar-tab.active {
+      background: linear-gradient(135deg, #0d9488, #14b8a6);
+      color: #fff; border-color: transparent;
+      box-shadow: 0 2px 8px rgba(13,148,136,0.3);
+    }
+
+    .template-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px; margin-bottom: 8px;
+      background: #1e293b; border: 2px solid #334155; border-radius: 12px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .template-card:hover { border-color: #0d9488; background: #0f2b2a; }
+    .template-card.selected {
+      border-color: #14b8a6; border-left: 4px solid #14b8a6;
+      background: #042f2e; box-shadow: 0 0 16px rgba(13,148,136,0.15);
+    }
+    .template-card .swatch {
+      width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .template-card .info .tname { font-weight: 600; font-size: 13px; color: #e2e8f0; }
+    .template-card .info .tdesc { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+    /* ── Content Form ────────────────────── */
+    .form-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px;
+    }
+    .form-header h3 { font-size: 13px; font-weight: 700; color: #e2e8f0; }
+    .shuffle-btn {
+      display: flex; align-items: center; gap: 4px;
+      padding: 6px 12px; border: 1.5px solid #334155; border-radius: 8px;
+      background: #1e293b; color: #14b8a6; font-family: inherit;
+      font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .shuffle-btn:hover { border-color: #14b8a6; background: #042f2e; }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 11px; font-weight: 600; color: #94a3b8; margin-bottom: 4px;
+    }
+    .form-group .counter { font-size: 10px; color: #475569; font-weight: 400; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 10px 12px; border: 1.5px solid #334155; border-radius: 10px;
+      font-family: inherit; font-size: 13px; color: #e2e8f0;
+      background: #1e293b; transition: all 0.2s; outline: none;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      border-color: #14b8a6; box-shadow: 0 0 12px rgba(13,148,136,0.15);
+    }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: #475569; }
+    .form-group textarea { resize: vertical; min-height: 56px; }
+    .form-group select option { background: #1e293b; color: #e2e8f0; }
+
+    /* ── Action Bar ──────────────────────── */
+    .action-bar {
+      position: sticky; bottom: 0;
+      display: flex; gap: 8px; padding: 12px 16px;
+      background: #0f172a; border-top: 1px solid #1e293b;
+    }
+    .btn {
+      flex: 1; padding: 12px; border: none; border-radius: 12px;
+      font-family: inherit; font-size: 13px; font-weight: 700;
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .btn-secondary { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+    .btn-secondary:hover { background: #334155; color: #e2e8f0; }
+    .btn-primary {
+      background: linear-gradient(135deg, #0d9488, #14b8a6);
+      color: #fff; flex: 2; box-shadow: 0 4px 16px rgba(13,148,136,0.3);
+    }
+    .btn-primary.ai-mode {
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      box-shadow: 0 4px 16px rgba(124,58,237,0.3);
+    }
+    .btn-primary:hover { box-shadow: 0 6px 24px rgba(13,148,136,0.4); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+    .status-msg {
+      display: none; padding: 10px 14px; border-radius: 10px;
+      font-size: 12px; font-weight: 500; margin-bottom: 12px;
+    }
+    .status-msg.show { display: block; }
+    .status-msg.success { background: #042f2e; color: #5eead4; border: 1px solid #0d9488; }
+    .status-msg.error { background: #2d0a0a; color: #fca5a5; border: 1px solid #991b1b; }
+    .status-msg.loading { background: #042f2e; color: #5eead4; border: 1px solid #0d9488; }
+    .status-msg.ai-loading { background: #1a0f2e; color: #c4b5fd; border: 1px solid #7c3aed; }
+
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid #134e4a; border-top-color: #5eead4;
+      border-radius: 50%; animation: spin 0.6s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    .spinner.ai { border-color: #3b1885; border-top-color: #c4b5fd; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Drivzu Post Generator</h1>
+  <p>Create stunning on-brand social posts in one click</p>
+</div>
+
+<div class="steps-bar">
+  <div class="step-indicator active" id="ind-1"></div>
+  <div class="step-indicator" id="ind-2"></div>
+  <div class="step-indicator" id="ind-3"></div>
+</div>
+
+<div id="step-1">
+  <div class="step-title">Choose Platform<span>Step 1 of 3</span></div>
+  <div class="content">
+    <div class="platform-grid" id="platform-grid"></div>
+    <div class="toggle-row">
+      <div class="toggle-switch" id="all-toggle" onclick="toggleAll()"><div class="knob"></div></div>
+      <label onclick="toggleAll()">Generate for all platforms at once</label>
+    </div>
+
+    <div class="toggle-row ai-row" style="margin-top:8px">
+      <div class="toggle-switch" id="ai-toggle" onclick="toggleAi()"><div class="knob"></div></div>
+      <label onclick="toggleAi()"><span class="ai-badge">AI</span> Nano Banana Pro backgrounds</label>
+    </div>
+
+    <div class="api-key-section hidden" id="api-key-section">
+      <div class="api-key-header">
+        <h4>Gemini API Key</h4>
+        <span class="api-key-status missing" id="key-status">Not set</span>
+      </div>
+      <div class="api-key-input-row">
+        <input type="password" id="api-key-input" placeholder="AIzaSy..." />
+        <button class="save-key-btn" onclick="saveApiKey()">Save</button>
+      </div>
+      <div class="api-key-hint">Free at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a> &mdash; 500 images/day free<br>Uses Nano Banana (gemini-2.5-flash-image) &mdash; no charges</div>
+    </div>
+  </div>
+</div>
+
+<div id="step-2" class="hidden">
+  <div class="step-title">Choose Template<span>Step 2 of 3</span></div>
+  <div class="content">
+    <div class="pillar-tabs" id="pillar-tabs"></div>
+    <div id="template-list"></div>
+  </div>
+</div>
+
+<div id="step-3" class="hidden">
+  <div class="step-title">Customize Content<span>Step 3 of 3</span></div>
+  <div class="content">
+    <div id="status-area"><div class="status-msg" id="status-msg"></div></div>
+    <div class="form-header">
+      <h3>Pre-filled with engaging content</h3>
+      <button class="shuffle-btn" onclick="shuffleContent()">&#x1F3B2; Shuffle</button>
+    </div>
+    <div id="content-form"></div>
+  </div>
+</div>
+
+<div class="action-bar">
+  <button class="btn btn-secondary hidden" id="btn-back" onclick="goBack()">Back</button>
+  <button class="btn btn-primary" id="btn-next" onclick="goNext()" disabled>Select Platform</button>
+</div>
+
+<script>
+var PLATFORMS = [
+  { id: "instagram-post", name: "Instagram Post", dims: "1080\u00d71350", icon: "\ud83d\udcf7" },
+  { id: "instagram-square", name: "Instagram Square", dims: "1080\u00d71080", icon: "\u2b1c" },
+  { id: "instagram-story", name: "Instagram Story", dims: "1080\u00d71920", icon: "\ud83d\udcf1" },
+  { id: "twitter", name: "X / Twitter", dims: "1200\u00d7675", icon: "\ud835\udd4f" },
+  { id: "linkedin", name: "LinkedIn", dims: "1200\u00d7627", icon: "\ud83d\udcbc" },
+  { id: "facebook", name: "Facebook", dims: "1080\u00d71350", icon: "\ud83d\udcd8" },
+  { id: "tiktok-cover", name: "TikTok Cover", dims: "1080\u00d71920", icon: "\ud83c\udfb5" },
+];
+
+var PILLARS = [
+  { id: "success-stories", name: "Success" },
+  { id: "education", name: "Education" },
+  { id: "entertainment", name: "Entertainment" },
+  { id: "behind-scenes", name: "Behind Scenes" },
+  { id: "promotion", name: "Promotion" },
+];
+
+var TEMPLATES = [
+  { id: "pass-celebration", name: "Pass Celebration", pillar: "success-stories", desc: "Celebrate a student passing their test", color: "#0891B2" },
+  { id: "testimonial-card", name: "Testimonial Card", pillar: "success-stories", desc: "Share a student quote or review", color: "#0891B2" },
+  { id: "stats-spotlight", name: "Stats Spotlight", pillar: "success-stories", desc: "Highlight an impressive statistic", color: "#F97316" },
+  { id: "driving-tip", name: "Driving Tip", pillar: "education", desc: "Share a useful driving tip", color: "#0d9488" },
+  { id: "edt-lesson", name: "EDT Lesson", pillar: "education", desc: "Spotlight an EDT lesson", color: "#F97316" },
+  { id: "did-you-know", name: "Did You Know?", pillar: "education", desc: "Share an interesting driving fact", color: "#F97316" },
+  { id: "meme-card", name: "Relatable Moment", pillar: "entertainment", desc: "Funny or relatable driving moment", color: "#F97316" },
+  { id: "quiz-poll", name: "Quiz / Poll", pillar: "entertainment", desc: "Test followers' driving knowledge", color: "#F97316" },
+  { id: "instructor-feature", name: "Instructor Feature", pillar: "behind-scenes", desc: "Feature one of your instructors", color: "#0891B2" },
+  { id: "platform-update", name: "Platform Update", pillar: "behind-scenes", desc: "Announce a new feature", color: "#F97316" },
+  { id: "bold-cta", name: "Bold CTA", pillar: "promotion", desc: "Strong call-to-action for bookings", color: "#0891B2" },
+  { id: "special-offer", name: "Special Offer", pillar: "promotion", desc: "Promote a limited time discount", color: "#F97316" },
+  { id: "booking-reminder", name: "Booking Reminder", pillar: "promotion", desc: "Gentle reminder to book a lesson", color: "#0891B2" },
+];
+
+var FORM_FIELDS = {
+  "pass-celebration":    ["headline:Headline:Congratulations [Name]!:60", "name:Student Name::40", "subtitle:Subtitle::120", "location:Test Centre::40"],
+  "testimonial-card":    ["quote:Quote Text::200", "name:Student Name::40", "subtitle:Role / Label::60"],
+  "stats-spotlight":     ["statNumber:Stat Number:98%:10", "headline:Metric Label::60", "subtitle:Context::120"],
+  "driving-tip":         ["tipNumber:Tip Number:1:4", "headline:Tip Title::60", "subtitle:Tip Body::200"],
+  "edt-lesson":          ["lessonNumber:Lesson Number:select:1,2,3,4,5,6,7,8,9,10,11,12", "headline:Lesson Title::60", "subtitle:Bullets (pipe-separated)::300"],
+  "did-you-know":        ["headline:Fact Text::200", "source:Source::60"],
+  "meme-card":           ["headline:Caption::120", "subtitle:Banner Text::80"],
+  "quiz-poll":           ["question:Question::120", "answers:Answers (pipe-separated)::200"],
+  "instructor-feature":  ["name:Instructor Name::40", "location:Location::40", "specialty:Specialty::60"],
+  "platform-update":     ["featureName:Feature Name::40", "description:Description::200"],
+  "bold-cta":            ["headline:Headline::60", "subtitle:Subtitle::120", "ctaText:CTA Button::40"],
+  "special-offer":       ["offerValue:Offer Value:20% OFF:20", "headline:Offer Details::60", "promoCode:Promo Code::20"],
+  "booking-reminder":    ["headline:Headline::60", "subtitle:Subtitle::120", "ctaText:CTA Button:Book Now:30"],
+};
+
+var currentStep = 1;
+var selectedPlatforms = [];
+var generateAll = false;
+var useAi = false;
+var activePillar = "success-stories";
+var selectedTemplate = null;
+var currentContentOptions = [];
+var currentContentIndex = 0;
+var storedApiKey = "";
+
+function renderPlatforms() {
+  document.getElementById("platform-grid").innerHTML = PLATFORMS.map(function(p) {
+    return '<div class="platform-btn" data-id="'+p.id+'" onclick="selectPlatform(\''+p.id+'\')">' +
+      '<div class="icon">'+p.icon+'</div><div class="name">'+p.name+'</div><div class="dims">'+p.dims+'</div></div>';
+  }).join("");
+}
+
+function renderPillars() {
+  document.getElementById("pillar-tabs").innerHTML = PILLARS.map(function(p) {
+    return '<div class="pillar-tab'+(p.id === activePillar ? ' active' : '')+'" onclick="selectPillar(\''+p.id+'\')">'+p.name+'</div>';
+  }).join("");
+}
+
+function renderTemplates() {
+  var filtered = TEMPLATES.filter(function(t) { return t.pillar === activePillar; });
+  document.getElementById("template-list").innerHTML = filtered.map(function(t) {
+    return '<div class="template-card'+(selectedTemplate === t.id ? ' selected' : '')+'" onclick="selectTemplate(\''+t.id+'\')">' +
+      '<div class="swatch" style="background:'+t.color+'"></div>' +
+      '<div class="info"><div class="tname">'+t.name+'</div><div class="tdesc">'+t.desc+'</div></div></div>';
+  }).join("");
+}
+
+function renderContentForm() {
+  var form = document.getElementById("content-form");
+  if (!selectedTemplate) { form.innerHTML = ""; return; }
+  var fields = FORM_FIELDS[selectedTemplate] || [];
+  form.innerHTML = fields.map(function(f) {
+    var parts = f.split(":");
+    var key = parts[0], label = parts[1], placeholder = parts[2], maxOrOpts = parts[3];
+    if (placeholder === "select") {
+      var opts = maxOrOpts.split(",");
+      return '<div class="form-group"><label>'+label+'</label>' +
+        '<select id="field-'+key+'" data-key="'+key+'">' +
+        opts.map(function(o) { return '<option value="'+o+'">'+o+'</option>'; }).join("") +
+        '</select></div>';
+    }
+    var max = parseInt(maxOrOpts) || 120;
+    if (max > 100) {
+      return '<div class="form-group"><label>'+label+' <span class="counter" id="counter-'+key+'">0/'+max+'</span></label>' +
+        '<textarea id="field-'+key+'" data-key="'+key+'" maxlength="'+max+'" placeholder="'+(placeholder||'')+'" oninput="updateCounter(\''+key+'\','+max+')"></textarea></div>';
+    }
+    return '<div class="form-group"><label>'+label+' <span class="counter" id="counter-'+key+'">0/'+max+'</span></label>' +
+      '<input type="text" id="field-'+key+'" data-key="'+key+'" maxlength="'+max+'" placeholder="'+(placeholder||'')+'" oninput="updateCounter(\''+key+'\','+max+')"></div>';
+  }).join("");
+}
+
+function fillFormWithContent(content) {
+  if (!content) return;
+  var fields = FORM_FIELDS[selectedTemplate] || [];
+  fields.forEach(function(f) {
+    var key = f.split(":")[0];
+    var el = document.getElementById("field-" + key);
+    if (el && content[key]) {
+      el.value = (key === "answers" && Array.isArray(content[key])) ? content[key].join(" | ") : content[key];
+      var counter = document.getElementById("counter-" + key);
+      if (counter) counter.textContent = el.value.length + "/" + (parseInt(f.split(":")[3]) || 120);
+    }
+  });
+}
+
+function selectPlatform(id) {
+  if (generateAll) return;
+  var idx = selectedPlatforms.indexOf(id);
+  if (idx >= 0) selectedPlatforms.splice(idx, 1); else selectedPlatforms.push(id);
+  document.querySelectorAll(".platform-btn").forEach(function(el) {
+    el.classList.toggle("selected", selectedPlatforms.indexOf(el.dataset.id) >= 0);
+  });
+  updateButtons();
+}
+
+function toggleAll() {
+  generateAll = !generateAll;
+  document.getElementById("all-toggle").classList.toggle("on", generateAll);
+  if (generateAll) {
+    selectedPlatforms = PLATFORMS.map(function(p) { return p.id; });
+    document.querySelectorAll(".platform-btn").forEach(function(el) { el.classList.add("selected"); });
+  } else {
+    selectedPlatforms = [];
+    document.querySelectorAll(".platform-btn").forEach(function(el) { el.classList.remove("selected"); });
+  }
+  updateButtons();
+}
+
+function toggleAi() {
+  useAi = !useAi;
+  document.getElementById("ai-toggle").classList.toggle("on", useAi);
+  document.getElementById("api-key-section").classList.toggle("hidden", !useAi);
+  if (useAi) parent.postMessage({ pluginMessage: { type: "get-api-key" } }, "*");
+  updateButtons();
+}
+
+function saveApiKey() {
+  var key = document.getElementById("api-key-input").value.trim();
+  if (key) {
+    storedApiKey = key;
+    parent.postMessage({ pluginMessage: { type: "save-api-key", apiKey: key } }, "*");
+  }
+}
+
+function selectPillar(id) { activePillar = id; renderPillars(); renderTemplates(); }
+function selectTemplate(id) { selectedTemplate = id; renderTemplates(); updateButtons(); }
+function updateCounter(key, max) {
+  var el = document.getElementById("field-" + key);
+  var c = document.getElementById("counter-" + key);
+  if (el && c) c.textContent = el.value.length + "/" + max;
+}
+
+function shuffleContent() {
+  if (currentContentOptions.length > 0) {
+    currentContentIndex = (currentContentIndex + 1) % currentContentOptions.length;
+    fillFormWithContent(currentContentOptions[currentContentIndex]);
+  } else {
+    parent.postMessage({ pluginMessage: { type: "get-content", templateId: selectedTemplate } }, "*");
+  }
+}
+
+function updateButtons() {
+  var btn = document.getElementById("btn-next");
+  var back = document.getElementById("btn-back");
+  btn.classList.toggle("ai-mode", useAi && currentStep === 3);
+  if (currentStep === 1) {
+    btn.disabled = selectedPlatforms.length === 0;
+    btn.textContent = selectedPlatforms.length > 0
+      ? "Next \u2014 " + selectedPlatforms.length + " platform" + (selectedPlatforms.length > 1 ? "s" : "")
+      : "Select Platform";
+    back.classList.add("hidden");
+  } else if (currentStep === 2) {
+    btn.disabled = !selectedTemplate;
+    btn.textContent = selectedTemplate ? "Next \u2014 Customize" : "Select Template";
+    back.classList.remove("hidden");
+  } else if (currentStep === 3) {
+    btn.disabled = false;
+    var suffix = selectedPlatforms.length > 1 ? "s" : "";
+    btn.textContent = useAi ? ("Generate AI Post" + suffix + " \u2728") : ("Generate Post" + suffix + " \u2728");
+    back.classList.remove("hidden");
+  }
+}
+
+function showStep(n) {
+  currentStep = n;
+  [1,2,3].forEach(function(i) {
+    document.getElementById("step-" + i).classList.toggle("hidden", i !== n);
+    document.getElementById("ind-" + i).classList.toggle("active", i === n);
+    document.getElementById("ind-" + i).classList.toggle("done", i < n);
+  });
+  updateButtons();
+}
+
+function goNext() {
+  if (currentStep === 1 && selectedPlatforms.length > 0) {
+    showStep(2); renderPillars(); renderTemplates();
+  } else if (currentStep === 2 && selectedTemplate) {
+    showStep(3); renderContentForm();
+    parent.postMessage({ pluginMessage: { type: "get-content", templateId: selectedTemplate } }, "*");
+  } else if (currentStep === 3) {
+    generatePost();
+  }
+}
+
+function goBack() { if (currentStep > 1) showStep(currentStep - 1); }
+
+function getFormContent() {
+  var content = {};
+  document.querySelectorAll("#content-form [data-key]").forEach(function(el) {
+    var val = el.value.trim();
+    if (val) content[el.dataset.key] = val;
+  });
+  if (content.answers) content.answers = content.answers.split("|").map(function(a) { return a.trim(); }).filter(Boolean);
+  return content;
+}
+
+function generatePost() {
+  var content = getFormContent();
+
+  if (useAi) {
+    showStatus("ai-loading", '<span class="spinner ai"></span>Generating AI backgrounds... this may take a moment');
+    parent.postMessage({ pluginMessage: {
+      type: "generate", templateId: selectedTemplate,
+      platformIds: selectedPlatforms, content: content, useAi: true,
+    }}, "*");
+  } else {
+    showStatus("loading", '<span class="spinner"></span>Generating posts...');
+    parent.postMessage({ pluginMessage: {
+      type: "generate", templateId: selectedTemplate,
+      platformIds: selectedPlatforms, content: content, useAi: false,
+    }}, "*");
+  }
+}
+
+// ── Gemini API Call (runs in UI iframe) ──────────────────────────────
+
+function callGeminiApi(apiKey, prompt, aspectRatio, platformId, templateId, content, index, total) {
+  var model = "gemini-2.5-flash-image"; // Nano Banana — FREE tier, 500 images/day
+  var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey;
+
+  showStatus("ai-loading", '<span class="spinner ai"></span>Generating AI image ' + (index+1) + ' of ' + total + '...');
+
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseModalities: ["TEXT", "IMAGE"],
+        imageConfig: { aspectRatio: aspectRatio, imageSize: "1K" }
+      }
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.error) {
+      showStatus("error", "\u2717 API Error: " + (data.error.message || "Unknown error"));
+      return;
+    }
+
+    var imageData = null;
+    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+      var parts = data.candidates[0].content.parts || [];
+      for (var i = 0; i < parts.length; i++) {
+        if (parts[i].inlineData && parts[i].inlineData.mimeType && parts[i].inlineData.mimeType.indexOf("image") >= 0) {
+          imageData = parts[i].inlineData.data;
+          break;
+        }
+      }
+    }
+
+    if (!imageData) {
+      showStatus("error", "\u2717 No image returned. Try a different template or model.");
+      return;
+    }
+
+    parent.postMessage({ pluginMessage: {
+      type: "ai-image-ready",
+      imageBase64: imageData,
+      platformId: platformId,
+      templateId: templateId,
+      content: content,
+      platformIndex: index,
+      totalPlatforms: total,
+    }}, "*");
+  })
+  .catch(function(err) {
+    showStatus("error", "\u2717 Network error: " + err.message);
+  });
+}
+
+function showStatus(type, msg) {
+  var el = document.getElementById("status-msg");
+  el.className = "status-msg show " + type;
+  el.innerHTML = msg;
+}
+
+// ── Plugin Messages ─────────────────────────────────────────────────
+
+onmessage = function(event) {
+  var msg = event.data.pluginMessage;
+  if (!msg) return;
+
+  if (msg.type === "fonts-loaded") {
+    if (msg.usingFallback) console.warn("Fallback font:", msg.family);
+
+  } else if (msg.type === "api-key-status") {
+    var status = document.getElementById("key-status");
+    if (msg.hasKey) {
+      status.className = "api-key-status connected";
+      status.textContent = "Connected " + (msg.keyPreview || "");
+      storedApiKey = msg.keyPreview || "set";
+    } else {
+      status.className = "api-key-status missing";
+      status.textContent = "Not set";
+    }
+
+  } else if (msg.type === "api-key-loaded") {
+    if (msg.apiKey) {
+      document.getElementById("api-key-input").value = msg.apiKey;
+      storedApiKey = msg.apiKey;
+      var st = document.getElementById("key-status");
+      st.className = "api-key-status connected";
+      st.textContent = "Connected";
+    }
+
+  } else if (msg.type === "content-suggestion") {
+    currentContentOptions = msg.allOptions || [];
+    currentContentIndex = 0;
+    fillFormWithContent(msg.content);
+
+  } else if (msg.type === "start-ai-generation") {
+    var platforms = msg.platforms;
+    var total = platforms.length;
+    var content = msg.content;
+
+    platforms.forEach(function(plat, idx) {
+      var aspectMap = {
+        "instagram-post": "4:5", "instagram-square": "1:1", "instagram-story": "9:16",
+        "twitter": "16:9", "linkedin": "16:9", "facebook": "4:5", "tiktok-cover": "9:16"
+      };
+      var ar = aspectMap[plat.id] || "4:5";
+
+      // Stagger API calls slightly to avoid rate limits
+      setTimeout(function() {
+        parent.postMessage({ pluginMessage: {
+          type: "get-ai-prompt", templateId: msg.templateId,
+          platformId: plat.id, content: content,
+        }}, "*");
+      }, idx * 500);
+    });
+
+    // Store context for prompt callbacks
+    window._aiContext = { apiKey: msg.apiKey, templateId: msg.templateId, content: content, total: total, idx: 0 };
+
+  } else if (msg.type === "ai-prompt-ready") {
+    var ctx = window._aiContext;
+    if (!ctx) return;
+    var aspectMap = {
+      "instagram-post": "4:5", "instagram-square": "1:1", "instagram-story": "9:16",
+      "twitter": "16:9", "linkedin": "16:9", "facebook": "4:5", "tiktok-cover": "9:16"
+    };
+    callGeminiApi(
+      ctx.apiKey, msg.prompt,
+      aspectMap[msg.platformId] || "4:5",
+      msg.platformId, msg.templateId, ctx.content,
+      ctx.idx, ctx.total
+    );
+    ctx.idx++;
+
+  } else if (msg.type === "success") {
+    showStatus("success", "\u2728 " + msg.message);
+    document.getElementById("btn-next").textContent = "Generate Again \u2728";
+
+  } else if (msg.type === "error") {
+    showStatus("error", "\u2717 " + msg.message);
+
+  } else if (msg.type === "status" && msg.status === "generating") {
+    showStatus("loading", '<span class="spinner"></span>Generating...');
+  }
+};
+
+renderPlatforms();
+updateButtons();
+</script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+{
+  "name": "drivzu-social-post-generator",
+  "version": "1.0.0",
+  "description": "Drivzu Social Post Generator — one-click branded social media posts in Figma",
+  "main": "code.js",
+  "scripts": {
+    "encode-logos": "node scripts/encode-logos.js",
+    "build": "node scripts/encode-logos.js && esbuild src/main.ts --bundle --outfile=code.js --target=es6",
+    "watch": "esbuild src/main.ts --bundle --outfile=code.js --target=es6 --watch",
+    "dev": "npm run encode-logos && npm run watch",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
+    "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix ."
+  },
+  "author": "Drivzu",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@figma/eslint-plugin-figma-plugins": "*",
+    "@figma/plugin-typings": "*",
+    "@typescript-eslint/eslint-plugin": "^6.12.0",
+    "@typescript-eslint/parser": "^6.12.0",
+    "esbuild": "^0.27.3",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2"
+  },
+  "eslintConfig": {
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:@figma/figma-plugins/recommended"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "project": "./tsconfig.json"
+    },
+    "root": true,
+    "rules": {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_"
+        }
+      ]
+    }
+  }
+}
