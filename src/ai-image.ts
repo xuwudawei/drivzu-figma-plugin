@@ -33,6 +33,26 @@ export function base64ToBytes(base64: string): Uint8Array {
 }
 
 /**
+ * Convert Uint8Array to base64 string (reverse of base64ToBytes)
+ * Used to send logo bytes from plugin sandbox to UI iframe
+ */
+export function bytesToBase64(bytes: Uint8Array): string {
+  let result = "";
+  const len = bytes.length;
+  for (let i = 0; i < len; i += 3) {
+    const a = bytes[i];
+    const b = i + 1 < len ? bytes[i + 1] : 0;
+    const c = i + 2 < len ? bytes[i + 2] : 0;
+
+    result += B64.charAt(a >> 2);
+    result += B64.charAt(((a & 3) << 4) | (b >> 4));
+    result += i + 1 < len ? B64.charAt(((b & 15) << 2) | (c >> 6)) : "=";
+    result += i + 2 < len ? B64.charAt(c & 63) : "=";
+  }
+  return result;
+}
+
+/**
  * Create a Figma image from base64 data and apply as fill to a rectangle
  */
 export function applyAiBackground(

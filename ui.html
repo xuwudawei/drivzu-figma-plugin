@@ -1,7 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script type="module">
+    import { encode as encodeGif } from "https://cdn.jsdelivr.net/npm/modern-gif@2.0.3/dist/modern-gif.js";
+    window.encodeGif = encodeGif;
+  </script>
+  <script type="module">
+    import { Muxer, ArrayBufferTarget } from "https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js";
+    window.Mp4Muxer = Muxer;
+    window.Mp4ArrayBufferTarget = ArrayBufferTarget;
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -9,19 +18,28 @@
       background: #0f172a; color: #e2e8f0; font-size: 13px; overflow-x: hidden;
     }
 
+    /* ── Header ───────────────────────────────── */
     .header {
       background: linear-gradient(135deg, #0d9488, #14b8a6);
       padding: 14px 16px 10px; position: relative; overflow: hidden;
+      display: flex; justify-content: space-between; align-items: flex-start;
     }
     .header::after {
       content: ''; position: absolute; top: -30%; right: -10%;
       width: 120px; height: 120px; border-radius: 50%;
-      background: rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.08); pointer-events: none;
     }
-    .header h1 { font-size: 16px; font-weight: 800; color: #fff; }
-    .header p { font-size: 11px; color: rgba(255,255,255,0.75); margin-top: 2px; }
+    .header-text h1 { font-size: 16px; font-weight: 800; color: #fff; }
+    .header-text p { font-size: 11px; color: rgba(255,255,255,0.75); margin-top: 2px; }
+    .settings-btn {
+      background: rgba(255,255,255,0.15); border: none; border-radius: 8px;
+      padding: 6px 10px; cursor: pointer; color: #fff; font-size: 16px;
+      transition: background 0.2s; z-index: 1;
+    }
+    .settings-btn:hover { background: rgba(255,255,255,0.25); }
 
-    .steps-bar { display: flex; padding: 0 16px 10px; gap: 6px; background: #0f172a; }
+    /* ── Steps Bar ────────────────────────────── */
+    .steps-bar { display: flex; padding: 8px 16px 6px; gap: 6px; background: #0f172a; }
     .step-indicator {
       flex: 1; height: 4px; border-radius: 2px;
       background: #1e293b; transition: all 0.3s;
@@ -38,11 +56,11 @@
     }
     .step-title span { color: #64748b; font-weight: 400; font-size: 11px; margin-left: 8px; }
 
-    .content { padding: 10px 16px; height: 420px; overflow-y: auto; }
+    .content { padding: 10px 16px; height: 480px; overflow-y: auto; }
     .content::-webkit-scrollbar { width: 4px; }
     .content::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
 
-    /* ── Platform Grid ───────────────────── */
+    /* ── Platform Grid ────────────────────────── */
     .platform-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .platform-btn {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -79,7 +97,6 @@
     }
     .toggle-switch.on .knob { left: 19px; }
 
-    /* ── AI Mode Badge ───────────────────── */
     .ai-badge {
       display: inline-flex; align-items: center; gap: 4px;
       padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;
@@ -92,80 +109,69 @@
       box-shadow: 0 0 12px rgba(124,58,237,0.3);
     }
 
-    /* ── API Key Section ─────────────────── */
+    /* ── API Key ──────────────────────────────── */
     .api-key-section {
       margin-top: 8px; padding: 10px 14px;
       background: #1a0f2e; border: 1px solid #4c1d95; border-radius: 10px;
     }
     .api-key-section.hidden { display: none; }
-    .api-key-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 8px;
-    }
+    .api-key-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .api-key-header h4 { font-size: 12px; font-weight: 600; color: #c4b5fd; }
-    .api-key-status {
-      font-size: 10px; padding: 2px 8px; border-radius: 4px;
-    }
+    .api-key-status { font-size: 10px; padding: 2px 8px; border-radius: 4px; }
     .api-key-status.connected { background: #064e3b; color: #6ee7b7; }
     .api-key-status.missing { background: #450a0a; color: #fca5a5; }
     .api-key-input-row { display: flex; gap: 6px; }
     .api-key-input-row input {
       flex: 1; padding: 8px 10px; border: 1.5px solid #4c1d95; border-radius: 8px;
-      font-family: monospace; font-size: 11px; color: #c4b5fd;
-      background: #0f0720; outline: none;
+      font-family: monospace; font-size: 11px; color: #c4b5fd; background: #0f0720; outline: none;
     }
     .api-key-input-row input:focus { border-color: #a855f7; }
     .api-key-input-row input::placeholder { color: #6b21a8; }
     .save-key-btn {
       padding: 8px 14px; border: none; border-radius: 8px;
       background: linear-gradient(135deg, #7c3aed, #a855f7);
-      color: #fff; font-family: inherit; font-size: 11px;
-      font-weight: 600; cursor: pointer;
+      color: #fff; font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
     }
     .save-key-btn:hover { opacity: 0.9; }
-    .api-key-hint {
-      font-size: 10px; color: #7c3aed; margin-top: 6px;
-    }
+    .api-key-hint { font-size: 10px; color: #7c3aed; margin-top: 6px; }
     .api-key-hint a { color: #a855f7; text-decoration: underline; }
 
-    /* ── Pillar Tabs ─────────────────────── */
-    .pillar-tabs { display: flex; gap: 4px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 2px; }
-    .pillar-tabs::-webkit-scrollbar { height: 0; }
-    .pillar-tab {
-      padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    /* ── Category Tabs ────────────────────────── */
+    .category-tabs { display: flex; gap: 4px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 2px; flex-wrap: wrap; }
+    .category-tabs::-webkit-scrollbar { height: 0; }
+    .category-tab {
+      padding: 5px 10px; border-radius: 20px; font-size: 10px; font-weight: 600;
       white-space: nowrap; cursor: pointer; border: 1.5px solid #334155;
       background: #1e293b; color: #94a3b8; transition: all 0.2s;
     }
-    .pillar-tab:hover { border-color: #0d9488; color: #e2e8f0; }
-    .pillar-tab.active {
+    .category-tab:hover { border-color: #0d9488; color: #e2e8f0; }
+    .category-tab.active {
       background: linear-gradient(135deg, #0d9488, #14b8a6);
       color: #fff; border-color: transparent;
       box-shadow: 0 2px 8px rgba(13,148,136,0.3);
     }
 
-    .template-card {
-      display: flex; align-items: center; gap: 10px;
-      padding: 12px; margin-bottom: 8px;
-      background: #1e293b; border: 2px solid #334155; border-radius: 12px;
-      cursor: pointer; transition: all 0.2s;
+    /* ── Template Grid ────────────────────────── */
+    .template-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .tmpl-card {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 10px 6px; border: 2px solid #1e293b; border-radius: 12px;
+      background: #1e293b; cursor: pointer; transition: all 0.2s; text-align: center;
     }
-    .template-card:hover { border-color: #0d9488; background: #0f2b2a; }
-    .template-card.selected {
-      border-color: #14b8a6; border-left: 4px solid #14b8a6;
-      background: #042f2e; box-shadow: 0 0 16px rgba(13,148,136,0.15);
+    .tmpl-card:hover { border-color: #0d9488; background: #0f2b2a; }
+    .tmpl-card.selected {
+      border-color: #14b8a6; background: #042f2e;
+      box-shadow: 0 0 16px rgba(13,148,136,0.15);
     }
-    .template-card .swatch {
-      width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    .tmpl-card .swatch {
+      width: 40px; height: 40px; border-radius: 10px; margin-bottom: 4px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
     }
-    .template-card .info .tname { font-weight: 600; font-size: 13px; color: #e2e8f0; }
-    .template-card .info .tdesc { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .tmpl-card .tname { font-weight: 600; font-size: 10px; color: #e2e8f0; line-height: 1.2; }
 
-    /* ── Content Form ────────────────────── */
-    .form-header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 12px;
-    }
+    /* ── Content Form ─────────────────────────── */
+    .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .form-header h3 { font-size: 13px; font-weight: 700; color: #e2e8f0; }
     .shuffle-btn {
       display: flex; align-items: center; gap: 4px;
@@ -174,7 +180,6 @@
       font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s;
     }
     .shuffle-btn:hover { border-color: #14b8a6; background: #042f2e; }
-
     .form-group { margin-bottom: 12px; }
     .form-group label {
       display: flex; justify-content: space-between; align-items: center;
@@ -193,7 +198,113 @@
     .form-group textarea { resize: vertical; min-height: 56px; }
     .form-group select option { background: #1e293b; color: #e2e8f0; }
 
-    /* ── Action Bar ──────────────────────── */
+    /* ── Preview Panel ────────────────────────── */
+    .preview-container {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .preview-img-wrap {
+      width: 100%; max-width: 350px; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4); border: 2px solid #1e293b;
+      position: relative; background: #1e293b;
+    }
+    .preview-img-wrap img { width: 100%; display: block; }
+    .preview-loading {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 300px; flex-direction: column; gap: 12px;
+    }
+    .preview-actions {
+      display: flex; gap: 8px; width: 100%; max-width: 350px;
+    }
+    .preview-actions .btn { font-size: 12px; padding: 10px; }
+    .variation-dots {
+      display: flex; gap: 6px; align-items: center; justify-content: center;
+    }
+    .variation-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #334155;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .variation-dot.active { background: #14b8a6; box-shadow: 0 0 8px rgba(13,148,136,0.5); }
+
+    /* ── Export Panel ─────────────────────────── */
+    .export-section { margin-top: 16px; }
+    .export-section h4 { font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; }
+    .export-btns { display: flex; gap: 8px; }
+    .export-btn {
+      flex: 1; padding: 10px 8px; border: 1.5px solid #334155; border-radius: 10px;
+      background: #1e293b; cursor: pointer; text-align: center; transition: all 0.2s;
+      font-family: inherit;
+    }
+    .export-btn:hover { border-color: #0d9488; background: #0f2b2a; }
+    .export-btn .icon { font-size: 20px; display: block; margin-bottom: 4px; }
+    .export-btn .label { font-size: 10px; font-weight: 600; color: #94a3b8; }
+
+    /* ── Caption Section ──────────────────────── */
+    .caption-section { margin-top: 16px; }
+    .caption-section h4 { font-size: 12px; font-weight: 700; color: #94a3b8; margin-bottom: 8px; }
+    .caption-area {
+      padding: 10px 12px; border: 1.5px solid #334155; border-radius: 10px;
+      background: #1e293b; font-family: inherit; font-size: 12px; color: #e2e8f0;
+      width: 100%; min-height: 60px; resize: vertical; outline: none;
+    }
+    .caption-area:focus { border-color: #14b8a6; }
+    .hashtag-area {
+      margin-top: 6px; padding: 8px 12px; border-radius: 8px; background: #1e293b;
+      font-size: 11px; color: #14b8a6; border: 1px solid #334155;
+    }
+    .caption-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .caption-btn {
+      padding: 6px 12px; border: 1px solid #334155; border-radius: 8px;
+      background: #1e293b; color: #94a3b8; font-family: inherit;
+      font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .caption-btn:hover { border-color: #14b8a6; color: #14b8a6; }
+
+    /* ── Settings Overlay ─────────────────────── */
+    .settings-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: #0f172a; z-index: 100; overflow-y: auto;
+      transform: translateX(100%); transition: transform 0.3s ease;
+    }
+    .settings-overlay.open { transform: translateX(0); }
+    .settings-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 16px; border-bottom: 1px solid #1e293b;
+    }
+    .settings-header h2 { font-size: 15px; font-weight: 700; color: #fff; }
+    .close-btn {
+      background: #1e293b; border: none; border-radius: 8px; padding: 6px 10px;
+      color: #94a3b8; cursor: pointer; font-size: 14px;
+    }
+    .settings-content { padding: 16px; }
+    .settings-section { margin-bottom: 20px; }
+    .settings-section h3 {
+      font-size: 13px; font-weight: 700; color: #e2e8f0; margin-bottom: 10px;
+      padding-bottom: 6px; border-bottom: 1px solid #1e293b;
+    }
+    .color-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .color-row label { font-size: 11px; color: #94a3b8; width: 100px; flex-shrink: 0; }
+    .color-row input[type="color"] {
+      width: 32px; height: 32px; border: 2px solid #334155; border-radius: 8px;
+      cursor: pointer; background: none; padding: 0;
+    }
+    .color-row input[type="text"] {
+      flex: 1; padding: 6px 10px; border: 1.5px solid #334155; border-radius: 8px;
+      font-family: monospace; font-size: 11px; color: #e2e8f0; background: #1e293b; outline: none;
+    }
+    .settings-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .logo-upload { display: flex; align-items: center; gap: 8px; }
+    .logo-upload-area {
+      flex: 1; padding: 10px 14px; border: 1.5px dashed #334155; border-radius: 10px;
+      background: #1e293b; color: #94a3b8; font-family: inherit;
+      font-size: 11px; cursor: pointer; text-align: center; transition: all 0.2s;
+    }
+    .logo-upload-area:hover { border-color: #14b8a6; color: #14b8a6; }
+    .logo-preview-img {
+      width: 40px; height: 40px; border-radius: 8px; object-fit: contain;
+      background: #0f172a; border: 1px solid #334155;
+    }
+
+    /* ── Action Bar ───────────────────────────── */
     .action-bar {
       position: sticky; bottom: 0;
       display: flex; gap: 8px; padding: 12px 16px;
@@ -234,38 +345,77 @@
       vertical-align: middle; margin-right: 6px;
     }
     .spinner.ai { border-color: #3b1885; border-top-color: #c4b5fd; }
+    .spinner.large { width: 32px; height: 32px; border-width: 3px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* ── Scheduling Step ──────────────────────── */
+    .schedule-platforms { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .sched-plat {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 12px; border: 1.5px solid #334155; border-radius: 8px;
+      background: #1e293b; cursor: pointer; font-size: 11px; font-weight: 500; color: #94a3b8;
+      transition: all 0.2s;
+    }
+    .sched-plat.checked { border-color: #14b8a6; color: #14b8a6; background: #042f2e; }
+    .sched-plat input { display: none; }
+    .sched-row {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 10px;
+    }
+    .sched-row label { font-size: 11px; font-weight: 600; color: #94a3b8; min-width: 70px; }
+    .sched-row input[type="date"], .sched-row input[type="time"] {
+      padding: 8px 10px; border: 1.5px solid #334155; border-radius: 8px;
+      font-family: inherit; font-size: 12px; color: #e2e8f0;
+      background: #1e293b; outline: none; flex: 1;
+    }
+    .sched-row input:focus { border-color: #14b8a6; }
+    .sched-radio { display: flex; gap: 12px; margin-bottom: 12px; }
+    .sched-radio label {
+      display: flex; align-items: center; gap: 6px; cursor: pointer;
+      font-size: 12px; color: #94a3b8; font-weight: 500;
+    }
+    .sched-radio input[type="radio"] { accent-color: #14b8a6; }
+    .progress-bar {
+      height: 4px; border-radius: 2px; background: #1e293b; overflow: hidden; margin-top: 8px;
+    }
+    .progress-bar-fill {
+      height: 100%; width: 0%; background: linear-gradient(90deg, #0d9488, #14b8a6);
+      transition: width 0.3s;
+    }
+
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>Drivzu Post Generator</h1>
-  <p>Create stunning on-brand social posts in one click</p>
+  <div class="header-text">
+    <h1>Drivzu Post Generator</h1>
+    <p>AI-powered social media design engine</p>
+  </div>
+  <button class="settings-btn" onclick="openSettings()">&#9881;</button>
 </div>
 
 <div class="steps-bar">
   <div class="step-indicator active" id="ind-1"></div>
   <div class="step-indicator" id="ind-2"></div>
   <div class="step-indicator" id="ind-3"></div>
+  <div class="step-indicator" id="ind-4"></div>
+  <div class="step-indicator" id="ind-5"></div>
 </div>
 
+<!-- Step 1: Platform -->
 <div id="step-1">
-  <div class="step-title">Choose Platform<span>Step 1 of 3</span></div>
+  <div class="step-title">Choose Platform<span>Step 1 of 5</span></div>
   <div class="content">
     <div class="platform-grid" id="platform-grid"></div>
     <div class="toggle-row">
       <div class="toggle-switch" id="all-toggle" onclick="toggleAll()"><div class="knob"></div></div>
       <label onclick="toggleAll()">Generate for all platforms at once</label>
     </div>
-
     <div class="toggle-row ai-row" style="margin-top:8px">
-      <div class="toggle-switch" id="ai-toggle" onclick="toggleAi()"><div class="knob"></div></div>
-      <label onclick="toggleAi()"><span class="ai-badge">AI</span> Nano Banana Pro backgrounds</label>
+      <div class="toggle-switch on" id="ai-toggle" onclick="toggleAi()"><div class="knob"></div></div>
+      <label onclick="toggleAi()"><span class="ai-badge">AI</span> Stunning AI-powered designs</label>
     </div>
-
-    <div class="api-key-section hidden" id="api-key-section">
+    <div class="api-key-section" id="api-key-section">
       <div class="api-key-header">
         <h4>Gemini API Key</h4>
         <span class="api-key-status missing" id="key-status">Not set</span>
@@ -274,28 +424,214 @@
         <input type="password" id="api-key-input" placeholder="AIzaSy..." />
         <button class="save-key-btn" onclick="saveApiKey()">Save</button>
       </div>
-      <div class="api-key-hint">Free at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a> &mdash; 500 images/day free<br>Uses Nano Banana (gemini-2.5-flash-image) &mdash; no charges</div>
+      <div class="api-key-hint">Free at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a> &mdash; 500 images/day<br>Uses gemini-2.5-flash-image &mdash; completely free</div>
     </div>
   </div>
 </div>
 
+<!-- Step 2: Template Marketplace -->
 <div id="step-2" class="hidden">
-  <div class="step-title">Choose Template<span>Step 2 of 3</span></div>
+  <div class="step-title">Choose Template<span>Step 2 of 5</span></div>
   <div class="content">
-    <div class="pillar-tabs" id="pillar-tabs"></div>
-    <div id="template-list"></div>
+    <div class="category-tabs" id="category-tabs"></div>
+    <div class="template-grid" id="template-grid"></div>
   </div>
 </div>
 
+<!-- Step 3: Content -->
 <div id="step-3" class="hidden">
-  <div class="step-title">Customize Content<span>Step 3 of 3</span></div>
+  <div class="step-title">Customize Content<span>Step 3 of 5</span></div>
   <div class="content">
     <div id="status-area"><div class="status-msg" id="status-msg"></div></div>
     <div class="form-header">
-      <h3>Pre-filled with engaging content</h3>
+      <h3 id="content-title">Content</h3>
       <button class="shuffle-btn" onclick="shuffleContent()">&#x1F3B2; Shuffle</button>
     </div>
     <div id="content-form"></div>
+  </div>
+</div>
+
+<!-- Step 4: Preview & Export -->
+<div id="step-4" class="hidden">
+  <div class="step-title">Preview &amp; Export<span>Step 4 of 5</span></div>
+  <div class="content">
+    <div id="preview-status"><div class="status-msg" id="preview-msg"></div></div>
+    <div class="preview-container" id="preview-container">
+      <div class="preview-loading" id="preview-loading">
+        <div class="spinner large ai"></div>
+        <div style="color:#c4b5fd;font-size:12px" id="preview-loading-text">Generating AI design...</div>
+      </div>
+    </div>
+
+    <div id="preview-result" class="hidden">
+      <div class="preview-container">
+        <div class="preview-img-wrap">
+          <img id="preview-img" alt="Preview" />
+        </div>
+        <div class="variation-dots" id="variation-dots"></div>
+        <div class="preview-actions">
+          <button class="btn btn-secondary" onclick="regeneratePreview()" style="flex:1">Regenerate</button>
+          <button class="btn btn-primary" onclick="useThisDesign()" style="flex:2">Use This Design</button>
+        </div>
+      </div>
+
+      <div class="export-section">
+        <h4>Export Options</h4>
+        <div class="export-btns">
+          <div class="export-btn" onclick="downloadPng()">
+            <span class="icon">&#128247;</span>
+            <span class="label">PNG</span>
+          </div>
+          <div class="export-btn" onclick="downloadGif()">
+            <span class="icon">&#127916;</span>
+            <span class="label">GIF</span>
+          </div>
+          <div class="export-btn" onclick="downloadMp4()">
+            <span class="icon">&#127909;</span>
+            <span class="label">MP4</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="caption-section">
+        <h4>AI Caption &amp; Hashtags</h4>
+        <textarea class="caption-area" id="caption-text" placeholder="AI caption will appear here..."></textarea>
+        <div class="hashtag-area" id="hashtag-area">#DrivingLessons #Ireland #Drivzu</div>
+        <div class="caption-actions">
+          <button class="caption-btn" onclick="generateCaption()">&#9733; Generate AI Caption</button>
+          <button class="caption-btn" onclick="copyCaption()">Copy Caption</button>
+          <button class="caption-btn" onclick="copyHashtags()">Copy Hashtags</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Step 5: Schedule & Share -->
+<div id="step-5" class="hidden">
+  <div class="step-title">Schedule &amp; Share<span>Step 5 of 5</span></div>
+  <div class="content">
+    <div id="schedule-status"><div class="status-msg" id="schedule-msg"></div></div>
+
+    <div class="form-group">
+      <label>Post to Platforms</label>
+      <div class="schedule-platforms" id="sched-platforms"></div>
+    </div>
+
+    <div class="form-group">
+      <label>When to Post</label>
+      <div class="sched-radio">
+        <label><input type="radio" name="sched-when" value="now" checked onchange="toggleScheduleTime()"> Post Now</label>
+        <label><input type="radio" name="sched-when" value="later" onchange="toggleScheduleTime()"> Schedule</label>
+      </div>
+      <div id="schedule-datetime" class="hidden">
+        <div class="sched-row">
+          <label>Date</label>
+          <input type="date" id="sched-date" />
+        </div>
+        <div class="sched-row" style="margin-top:6px">
+          <label>Time</label>
+          <input type="time" id="sched-time" value="14:00" />
+        </div>
+      </div>
+    </div>
+
+    <div class="caption-section" style="margin-top:8px">
+      <h4>Caption</h4>
+      <textarea class="caption-area" id="sched-caption" placeholder="Caption for your post..."></textarea>
+      <div class="hashtag-area" id="sched-hashtags">#DrivingLessons #Ireland #Drivzu</div>
+    </div>
+
+    <div class="form-group" style="margin-top:12px">
+      <label>Webhook URL <span style="font-weight:400;color:#475569">(Make.com / Zapier)</span></label>
+      <input type="text" id="sched-webhook" placeholder="https://hook.us1.make.com/..." />
+    </div>
+
+    <div class="progress-bar hidden" id="sched-progress"><div class="progress-bar-fill" id="sched-progress-fill"></div></div>
+  </div>
+</div>
+
+<!-- Settings Overlay -->
+<div class="settings-overlay" id="settings-overlay">
+  <div class="settings-header">
+    <h2>Settings</h2>
+    <button class="close-btn" onclick="closeSettings()">&#x2715;</button>
+  </div>
+  <div class="settings-content">
+    <div class="settings-section">
+      <h3>Brand Kit</h3>
+      <div class="form-group">
+        <label>Brand Name</label>
+        <input type="text" id="bk-name" value="drivzu.ie" />
+      </div>
+      <div class="color-row">
+        <label>Primary</label>
+        <input type="color" id="bk-primary" value="#0d9488" onchange="syncColorText(this,'bk-primary-text')" />
+        <input type="text" id="bk-primary-text" value="#0d9488" onchange="syncColorPicker(this,'bk-primary')" />
+      </div>
+      <div class="color-row">
+        <label>Secondary</label>
+        <input type="color" id="bk-secondary" value="#F97316" onchange="syncColorText(this,'bk-secondary-text')" />
+        <input type="text" id="bk-secondary-text" value="#F97316" onchange="syncColorPicker(this,'bk-secondary')" />
+      </div>
+      <div class="color-row">
+        <label>Accent</label>
+        <input type="color" id="bk-accent" value="#14b8a6" onchange="syncColorText(this,'bk-accent-text')" />
+        <input type="text" id="bk-accent-text" value="#14b8a6" onchange="syncColorPicker(this,'bk-accent')" />
+      </div>
+      <div class="color-row">
+        <label>Dark</label>
+        <input type="color" id="bk-dark" value="#0f172a" onchange="syncColorText(this,'bk-dark-text')" />
+        <input type="text" id="bk-dark-text" value="#0f172a" onchange="syncColorPicker(this,'bk-dark')" />
+      </div>
+      <div class="color-row">
+        <label>Light</label>
+        <input type="color" id="bk-light" value="#f0fdfa" onchange="syncColorText(this,'bk-light-text')" />
+        <input type="text" id="bk-light-text" value="#f0fdfa" onchange="syncColorPicker(this,'bk-light')" />
+      </div>
+      <div class="form-group">
+        <label>Font Family</label>
+        <select id="bk-font">
+          <option>Plus Jakarta Sans</option><option>Inter</option><option>Poppins</option>
+          <option>Montserrat</option><option>Outfit</option><option>DM Sans</option>
+          <option>Raleway</option><option>Nunito</option><option>Rubik</option>
+          <option>Work Sans</option><option>Manrope</option><option>Sora</option>
+          <option>Space Grotesk</option><option>Quicksand</option><option>Barlow</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Industry</label>
+        <input type="text" id="bk-industry" value="Driving School" />
+      </div>
+      <div class="form-group">
+        <label>Voice &amp; Tone</label>
+        <input type="text" id="bk-voice" value="Friendly, encouraging, professional but fun. Irish context." />
+      </div>
+      <div class="form-group">
+        <label>Logo <span style="font-weight:400;color:#475569">(PNG/JPG, optional)</span></label>
+        <div class="logo-upload">
+          <img id="bk-logo-preview" class="logo-preview-img" style="display:none" />
+          <label class="logo-upload-area" id="bk-logo-area">
+            Upload Logo
+            <input type="file" accept="image/png,image/jpeg,image/webp" id="bk-logo-input" style="display:none" onchange="handleLogoUpload(this)" />
+          </label>
+          <button class="caption-btn" onclick="clearLogo()" id="bk-logo-clear" style="display:none">Clear</button>
+        </div>
+      </div>
+      <div class="settings-actions">
+        <button class="btn btn-secondary" onclick="resetBrandKit()" style="flex:1">Reset to Drivzu</button>
+        <button class="btn btn-primary" onclick="saveBrandKit()" style="flex:1">Save Brand Kit</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Webhook (Scheduling)</h3>
+      <div class="form-group">
+        <label>Make.com / Zapier Webhook URL</label>
+        <input type="text" id="webhook-url" placeholder="https://hook.us1.make.com/..." />
+      </div>
+      <button class="btn btn-primary" onclick="saveWebhook()" style="width:100%">Save Webhook</button>
+    </div>
   </div>
 </div>
 
@@ -304,110 +640,632 @@
   <button class="btn btn-primary" id="btn-next" onclick="goNext()" disabled>Select Platform</button>
 </div>
 
+<!-- Hidden canvas for compositing -->
+<canvas id="composite-canvas" style="display:none"></canvas>
+
 <script>
+// ═══════════════════════════════════════════════════════════════════════
+// DATA — Platforms, Categories, 51 Templates, Form Fields
+// ═══════════════════════════════════════════════════════════════════════
+
 var PLATFORMS = [
-  { id: "instagram-post", name: "Instagram Post", dims: "1080\u00d71350", icon: "\ud83d\udcf7" },
-  { id: "instagram-square", name: "Instagram Square", dims: "1080\u00d71080", icon: "\u2b1c" },
-  { id: "instagram-story", name: "Instagram Story", dims: "1080\u00d71920", icon: "\ud83d\udcf1" },
-  { id: "twitter", name: "X / Twitter", dims: "1200\u00d7675", icon: "\ud835\udd4f" },
-  { id: "linkedin", name: "LinkedIn", dims: "1200\u00d7627", icon: "\ud83d\udcbc" },
-  { id: "facebook", name: "Facebook", dims: "1080\u00d71350", icon: "\ud83d\udcd8" },
-  { id: "tiktok-cover", name: "TikTok Cover", dims: "1080\u00d71920", icon: "\ud83c\udfb5" },
+  { id: "instagram-post", name: "Instagram Post", dims: "1080\u00d71350", icon: "\ud83d\udcf7", w: 1080, h: 1350 },
+  { id: "instagram-square", name: "Instagram Square", dims: "1080\u00d71080", icon: "\u2b1c", w: 1080, h: 1080 },
+  { id: "instagram-story", name: "Instagram Story", dims: "1080\u00d71920", icon: "\ud83d\udcf1", w: 1080, h: 1920 },
+  { id: "twitter", name: "X / Twitter", dims: "1200\u00d7675", icon: "\ud835\udd4f", w: 1200, h: 675 },
+  { id: "linkedin", name: "LinkedIn", dims: "1200\u00d7627", icon: "\ud83d\udcbc", w: 1200, h: 627 },
+  { id: "facebook", name: "Facebook", dims: "1080\u00d71350", icon: "\ud83d\udcd8", w: 1080, h: 1350 },
+  { id: "tiktok-cover", name: "TikTok Cover", dims: "1080\u00d71920", icon: "\ud83c\udfb5", w: 1080, h: 1920 },
 ];
 
-var PILLARS = [
-  { id: "success-stories", name: "Success" },
+var CATEGORIES = [
+  { id: "all", name: "All" },
+  { id: "custom", name: "Custom" },
+  { id: "celebrations", name: "Celebrations" },
   { id: "education", name: "Education" },
+  { id: "social-proof", name: "Social Proof" },
   { id: "entertainment", name: "Entertainment" },
   { id: "behind-scenes", name: "Behind Scenes" },
   { id: "promotion", name: "Promotion" },
+  { id: "engagement", name: "Engagement" },
+  { id: "announcements", name: "Announcements" },
 ];
 
 var TEMPLATES = [
-  { id: "pass-celebration", name: "Pass Celebration", pillar: "success-stories", desc: "Celebrate a student passing their test", color: "#0891B2" },
-  { id: "testimonial-card", name: "Testimonial Card", pillar: "success-stories", desc: "Share a student quote or review", color: "#0891B2" },
-  { id: "stats-spotlight", name: "Stats Spotlight", pillar: "success-stories", desc: "Highlight an impressive statistic", color: "#F97316" },
-  { id: "driving-tip", name: "Driving Tip", pillar: "education", desc: "Share a useful driving tip", color: "#0d9488" },
-  { id: "edt-lesson", name: "EDT Lesson", pillar: "education", desc: "Spotlight an EDT lesson", color: "#F97316" },
-  { id: "did-you-know", name: "Did You Know?", pillar: "education", desc: "Share an interesting driving fact", color: "#F97316" },
-  { id: "meme-card", name: "Relatable Moment", pillar: "entertainment", desc: "Funny or relatable driving moment", color: "#F97316" },
-  { id: "quiz-poll", name: "Quiz / Poll", pillar: "entertainment", desc: "Test followers' driving knowledge", color: "#F97316" },
-  { id: "instructor-feature", name: "Instructor Feature", pillar: "behind-scenes", desc: "Feature one of your instructors", color: "#0891B2" },
-  { id: "platform-update", name: "Platform Update", pillar: "behind-scenes", desc: "Announce a new feature", color: "#F97316" },
-  { id: "bold-cta", name: "Bold CTA", pillar: "promotion", desc: "Strong call-to-action for bookings", color: "#0891B2" },
-  { id: "special-offer", name: "Special Offer", pillar: "promotion", desc: "Promote a limited time discount", color: "#F97316" },
-  { id: "booking-reminder", name: "Booking Reminder", pillar: "promotion", desc: "Gentle reminder to book a lesson", color: "#0891B2" },
+  // Custom (1)
+  { id: "custom-post", name: "Custom Post", cat: "custom", icon: "\u270f\ufe0f", color: "#7c3aed" },
+  // Celebrations (7)
+  { id: "pass-celebration", name: "Pass Celebration", cat: "celebrations", icon: "\ud83c\udf89", color: "#0891B2" },
+  { id: "achievement-unlocked", name: "Achievement", cat: "celebrations", icon: "\ud83c\udfc6", color: "#0891B2" },
+  { id: "milestone-reached", name: "Milestone", cat: "celebrations", icon: "\u2b50", color: "#eab308" },
+  { id: "welcome-aboard", name: "Welcome", cat: "celebrations", icon: "\ud83d\udc4b", color: "#0d9488" },
+  { id: "birthday-wish", name: "Birthday", cat: "celebrations", icon: "\ud83c\udf82", color: "#ec4899" },
+  { id: "anniversary", name: "Anniversary", cat: "celebrations", icon: "\ud83d\udc8e", color: "#8b5cf6" },
+  { id: "student-spotlight", name: "Spotlight", cat: "celebrations", icon: "\ud83d\udd26", color: "#f59e0b" },
+  // Education (8)
+  { id: "driving-tip", name: "Driving Tip", cat: "education", icon: "\ud83d\ude97", color: "#0d9488" },
+  { id: "edt-lesson", name: "EDT Lesson", cat: "education", icon: "\ud83d\udcdd", color: "#F97316" },
+  { id: "did-you-know", name: "Did You Know", cat: "education", icon: "\u2753", color: "#6366f1" },
+  { id: "safety-alert", name: "Safety Alert", cat: "education", icon: "\u26a0\ufe0f", color: "#ef4444" },
+  { id: "road-rules", name: "Road Rules", cat: "education", icon: "\ud83d\udea6", color: "#22c55e" },
+  { id: "test-prep", name: "Test Prep", cat: "education", icon: "\ud83d\udcda", color: "#3b82f6" },
+  { id: "faq-answer", name: "FAQ Answer", cat: "education", icon: "\ud83d\udcac", color: "#14b8a6" },
+  { id: "pro-tip", name: "Pro Tip", cat: "education", icon: "\ud83d\udca1", color: "#f59e0b" },
+  // Social Proof (6)
+  { id: "testimonial-card", name: "Testimonial", cat: "social-proof", icon: "\ud83d\udcac", color: "#0891B2" },
+  { id: "stats-spotlight", name: "Stats", cat: "social-proof", icon: "\ud83d\udcca", color: "#F97316" },
+  { id: "before-after", name: "Before/After", cat: "social-proof", icon: "\ud83d\udd04", color: "#8b5cf6" },
+  { id: "review-highlight", name: "Review", cat: "social-proof", icon: "\u2b50", color: "#eab308" },
+  { id: "case-study", name: "Case Study", cat: "social-proof", icon: "\ud83d\udcc8", color: "#0d9488" },
+  { id: "social-counter", name: "Counter", cat: "social-proof", icon: "\ud83d\udcaf", color: "#ef4444" },
+  // Entertainment (6)
+  { id: "meme-card", name: "Meme", cat: "entertainment", icon: "\ud83d\ude02", color: "#F97316" },
+  { id: "quiz-poll", name: "Quiz / Poll", cat: "entertainment", icon: "\ud83e\udde0", color: "#8b5cf6" },
+  { id: "this-or-that", name: "This or That", cat: "entertainment", icon: "\u2696\ufe0f", color: "#ec4899" },
+  { id: "caption-contest", name: "Caption This", cat: "entertainment", icon: "\ud83d\udcf8", color: "#0d9488" },
+  { id: "relatable-moment", name: "Relatable", cat: "entertainment", icon: "\ud83d\ude05", color: "#f59e0b" },
+  { id: "fun-fact", name: "Fun Fact", cat: "entertainment", icon: "\ud83c\udf1f", color: "#6366f1" },
+  // Behind Scenes (5)
+  { id: "instructor-feature", name: "Instructor", cat: "behind-scenes", icon: "\ud83d\udc68\u200d\ud83c\udfeb", color: "#0891B2" },
+  { id: "platform-update", name: "Update", cat: "behind-scenes", icon: "\ud83d\ude80", color: "#F97316" },
+  { id: "day-in-life", name: "Day in Life", cat: "behind-scenes", icon: "\u2600\ufe0f", color: "#f59e0b" },
+  { id: "office-tour", name: "Office Tour", cat: "behind-scenes", icon: "\ud83c\udfe2", color: "#0d9488" },
+  { id: "meet-founder", name: "Meet Founder", cat: "behind-scenes", icon: "\ud83d\udc64", color: "#8b5cf6" },
+  // Promotion (7)
+  { id: "bold-cta", name: "Bold CTA", cat: "promotion", icon: "\ud83d\udca5", color: "#0891B2" },
+  { id: "special-offer", name: "Special Offer", cat: "promotion", icon: "\ud83c\udf81", color: "#F97316" },
+  { id: "flash-sale", name: "Flash Sale", cat: "promotion", icon: "\u26a1", color: "#ef4444" },
+  { id: "referral-program", name: "Referral", cat: "promotion", icon: "\ud83e\udd1d", color: "#0d9488" },
+  { id: "bundle-deal", name: "Bundle Deal", cat: "promotion", icon: "\ud83d\udce6", color: "#8b5cf6" },
+  { id: "seasonal-promo", name: "Seasonal", cat: "promotion", icon: "\ud83c\udf42", color: "#f59e0b" },
+  { id: "limited-time", name: "Limited Time", cat: "promotion", icon: "\u23f0", color: "#ec4899" },
+  // Engagement (6)
+  { id: "question-of-day", name: "QOTD", cat: "engagement", icon: "\u2754", color: "#6366f1" },
+  { id: "fill-in-blank", name: "Fill Blank", cat: "engagement", icon: "\u270d\ufe0f", color: "#0d9488" },
+  { id: "hot-take", name: "Hot Take", cat: "engagement", icon: "\ud83d\udd25", color: "#ef4444" },
+  { id: "debate", name: "Debate", cat: "engagement", icon: "\ud83d\udde3\ufe0f", color: "#F97316" },
+  { id: "story-time", name: "Story Time", cat: "engagement", icon: "\ud83d\udcd6", color: "#8b5cf6" },
+  { id: "throwback", name: "Throwback", cat: "engagement", icon: "\u23ea", color: "#0891B2" },
+  // Announcements (6)
+  { id: "new-feature", name: "New Feature", cat: "announcements", icon: "\u2728", color: "#0d9488" },
+  { id: "coming-soon", name: "Coming Soon", cat: "announcements", icon: "\ud83d\udd1c", color: "#8b5cf6" },
+  { id: "launch-day", name: "Launch Day", cat: "announcements", icon: "\ud83d\ude80", color: "#F97316" },
+  { id: "event-invite", name: "Event Invite", cat: "announcements", icon: "\ud83c\udf9f\ufe0f", color: "#ec4899" },
+  { id: "press-release", name: "Press Release", cat: "announcements", icon: "\ud83d\udcf0", color: "#0891B2" },
+  { id: "partnership", name: "Partnership", cat: "announcements", icon: "\ud83e\udd1d", color: "#f59e0b" },
 ];
 
 var FORM_FIELDS = {
-  "pass-celebration":    ["headline:Headline:Congratulations [Name]!:60", "name:Student Name::40", "subtitle:Subtitle::120", "location:Test Centre::40"],
-  "testimonial-card":    ["quote:Quote Text::200", "name:Student Name::40", "subtitle:Role / Label::60"],
-  "stats-spotlight":     ["statNumber:Stat Number:98%:10", "headline:Metric Label::60", "subtitle:Context::120"],
-  "driving-tip":         ["tipNumber:Tip Number:1:4", "headline:Tip Title::60", "subtitle:Tip Body::200"],
-  "edt-lesson":          ["lessonNumber:Lesson Number:select:1,2,3,4,5,6,7,8,9,10,11,12", "headline:Lesson Title::60", "subtitle:Bullets (pipe-separated)::300"],
-  "did-you-know":        ["headline:Fact Text::200", "source:Source::60"],
-  "meme-card":           ["headline:Caption::120", "subtitle:Banner Text::80"],
-  "quiz-poll":           ["question:Question::120", "answers:Answers (pipe-separated)::200"],
-  "instructor-feature":  ["name:Instructor Name::40", "location:Location::40", "specialty:Specialty::60"],
-  "platform-update":     ["featureName:Feature Name::40", "description:Description::200"],
-  "bold-cta":            ["headline:Headline::60", "subtitle:Subtitle::120", "ctaText:CTA Button::40"],
-  "special-offer":       ["offerValue:Offer Value:20% OFF:20", "headline:Offer Details::60", "promoCode:Promo Code::20"],
-  "booking-reminder":    ["headline:Headline::60", "subtitle:Subtitle::120", "ctaText:CTA Button:Book Now:30"],
+  "custom-post":          ["customIdea:What's this post about?:e.g. We just launched, Spring 25% off deal, Student passed test:200", "customMood:Visual Mood:select:Celebratory,Professional,Fun & Playful,Urgent & Bold,Inspiring,Minimal & Clean,Dark & Dramatic,Bright & Energetic", "headline:Headline Text::80", "subtitle:Subtitle Text::160"],
+  "pass-celebration":     ["headline:Headline:Congratulations!:60", "name:Student Name::40", "subtitle:Subtitle::120"],
+  "achievement-unlocked": ["headline:Achievement::60", "subtitle:Description::120"],
+  "milestone-reached":    ["statNumber:Number:1000+:10", "headline:Metric::60", "subtitle:Context::120"],
+  "welcome-aboard":       ["name:Name::40", "headline:Welcome Message::60", "subtitle:Details::120"],
+  "birthday-wish":        ["name:Name::40", "headline:Birthday Message::80", "subtitle:Wish::120"],
+  "anniversary":          ["headline:Anniversary Title::60", "subtitle:Message::120"],
+  "student-spotlight":    ["name:Student Name::40", "headline:Achievement::60", "subtitle:Story::120"],
+  "testimonial-card":     ["quote:Quote::200", "name:Name::40", "subtitle:Label::60"],
+  "stats-spotlight":      ["statNumber:Stat:98%:10", "headline:Metric::60", "subtitle:Context::120"],
+  "before-after":         ["headline:Transformation::60", "subtitle:Description::120"],
+  "review-highlight":     ["quote:Review::200", "name:Reviewer::40", "subtitle:Rating::20"],
+  "case-study":           ["headline:Title::60", "subtitle:Summary::200"],
+  "social-counter":       ["statNumber:Count:10K+:10", "headline:Label::60", "subtitle:Context::80"],
+  "driving-tip":          ["tipNumber:Tip #:1:4", "headline:Tip Title::60", "subtitle:Tip Body::200"],
+  "edt-lesson":           ["lessonNumber:Lesson:select:1,2,3,4,5,6,7,8,9,10,11,12", "headline:Title::60", "subtitle:Details::200"],
+  "did-you-know":         ["headline:Fact::200", "source:Source::60"],
+  "safety-alert":         ["headline:Alert Title::60", "subtitle:Details::200"],
+  "road-rules":           ["headline:Rule::60", "subtitle:Explanation::200"],
+  "test-prep":            ["headline:Topic::60", "subtitle:Key Points::200"],
+  "faq-answer":           ["headline:Question::80", "subtitle:Answer::200"],
+  "pro-tip":              ["headline:Tip::60", "subtitle:Details::200"],
+  "meme-card":            ["headline:Top Text::80", "subtitle:Bottom Text::80"],
+  "quiz-poll":            ["question:Question::120", "answers:Answers (pipe-separated)::200"],
+  "this-or-that":         ["headline:Option A::40", "subtitle:Option B::40"],
+  "caption-contest":      ["headline:Caption This::80", "subtitle:Hint::60"],
+  "relatable-moment":     ["headline:Caption::120", "subtitle:Punchline::80"],
+  "fun-fact":             ["headline:Fact::120", "source:Source::40"],
+  "instructor-feature":   ["name:Name::40", "headline:Specialty::60", "subtitle:Bio::120"],
+  "platform-update":      ["headline:Feature::60", "subtitle:Description::200"],
+  "day-in-life":          ["headline:Title::60", "subtitle:Description::200"],
+  "office-tour":          ["headline:Title::60", "subtitle:Description::120"],
+  "meet-founder":         ["name:Name::40", "headline:Title::60", "subtitle:Story::200"],
+  "bold-cta":             ["headline:Headline::60", "subtitle:Subtitle::120", "ctaText:CTA:Book Now:30"],
+  "special-offer":        ["offerValue:Offer:20% OFF:20", "headline:Details::60", "promoCode:Code::20"],
+  "flash-sale":           ["headline:Sale Title::40", "offerValue:Discount::20", "subtitle:Terms::80"],
+  "referral-program":     ["headline:Title::60", "subtitle:Details::120", "promoCode:Code::20"],
+  "bundle-deal":          ["headline:Bundle::60", "offerValue:Price::20", "subtitle:Includes::120"],
+  "seasonal-promo":       ["headline:Promo::60", "subtitle:Details::120"],
+  "limited-time":         ["headline:Offer::60", "subtitle:Details::80", "offerValue:Discount::20"],
+  "question-of-day":      ["headline:Question::120"],
+  "fill-in-blank":        ["headline:Sentence with ___::120"],
+  "hot-take":             ["headline:Hot Take::120"],
+  "debate":               ["headline:Topic::60", "subtitle:Two sides::120"],
+  "story-time":           ["headline:Title::60", "subtitle:Story::200"],
+  "throwback":            ["headline:Memory::80", "subtitle:Context::120"],
+  "new-feature":          ["headline:Feature::60", "subtitle:Description::200"],
+  "coming-soon":          ["headline:What's Coming::60", "subtitle:Teaser::120"],
+  "launch-day":           ["headline:Launch Title::60", "subtitle:Description::120"],
+  "event-invite":         ["headline:Event::60", "subtitle:Details::120"],
+  "press-release":        ["headline:Title::60", "subtitle:Summary::200"],
+  "partnership":          ["headline:Partnership::60", "subtitle:Details::120"],
+  "booking-reminder":     ["headline:Headline::60", "subtitle:Subtitle::120", "ctaText:CTA:Book Now:30"],
 };
+
+// ═══════════════════════════════════════════════════════════════════════
+// TEXT PRESETS (Canvas rendering styles — mirrors ai-prompts.ts)
+// ═══════════════════════════════════════════════════════════════════════
+
+var TEXT_PRESETS = {
+  "luminous-hero": {
+    headlineWeight: 800, headlineColor: "#FFFFFF",
+    glowColor: "rgba(13,148,136,0.6)", glowBlur: 30,
+    shadowColor: "rgba(0,0,0,0.55)", shadowBlur: 18, shadowOffsetY: 6,
+    gradientColors: ["#FFFFFF", "#e0f2f1"], strokeColor: null, strokeWidth: 0,
+    subtitleWeight: 500, subtitleColor: "#e0f2f1",
+    labelWeight: 600, labelColor: "#FFFFFF", labelBg: "#0d9488",
+  },
+  "elegant-minimal": {
+    headlineWeight: 600, headlineColor: "#0f172a",
+    glowColor: null, glowBlur: 0,
+    shadowColor: "rgba(0,0,0,0.12)", shadowBlur: 2, shadowOffsetY: 1,
+    gradientColors: null, strokeColor: null, strokeWidth: 0,
+    subtitleWeight: 400, subtitleColor: "#475569",
+    labelWeight: 500, labelColor: "#0d9488", labelBg: null,
+  },
+  "neon-data": {
+    headlineWeight: 700, headlineColor: "#FFFFFF",
+    glowColor: "rgba(13,148,136,0.7)", glowBlur: 40,
+    shadowColor: "rgba(13,148,136,0.5)", shadowBlur: 15, shadowOffsetY: 0,
+    gradientColors: null, strokeColor: null, strokeWidth: 0,
+    subtitleWeight: 500, subtitleColor: "#99f6e4",
+    labelWeight: 600, labelColor: "#FFFFFF", labelBg: "rgba(13,148,136,0.6)",
+  },
+  "pop-bold": {
+    headlineWeight: 800, headlineColor: "#FFFFFF",
+    glowColor: null, glowBlur: 0,
+    shadowColor: "rgba(0,0,0,0.7)", shadowBlur: 0, shadowOffsetY: 4,
+    gradientColors: null, strokeColor: "#000000", strokeWidth: 3,
+    subtitleWeight: 700, subtitleColor: "#FFFFFF",
+    labelWeight: 700, labelColor: "#000000", labelBg: "#F97316",
+  },
+  "urgency": {
+    headlineWeight: 900, headlineColor: "#F97316",
+    glowColor: null, glowBlur: 0,
+    shadowColor: "rgba(0,0,0,0.65)", shadowBlur: 10, shadowOffsetY: 5,
+    gradientColors: ["#F97316", "#FBBF24"], strokeColor: null, strokeWidth: 0,
+    subtitleWeight: 700, subtitleColor: "#FFFFFF",
+    labelWeight: 700, labelColor: "#FFFFFF", labelBg: "#dc2626",
+  }
+};
+
+var TEMPLATE_PRESET_MAP = {
+  "custom-post": "luminous-hero",
+  "pass-celebration": "luminous-hero", "achievement-unlocked": "luminous-hero",
+  "milestone-reached": "luminous-hero", "welcome-aboard": "luminous-hero",
+  "birthday-wish": "luminous-hero", "anniversary": "luminous-hero",
+  "student-spotlight": "luminous-hero",
+  "driving-tip": "neon-data", "edt-lesson": "elegant-minimal",
+  "did-you-know": "neon-data", "safety-alert": "urgency",
+  "road-rules": "neon-data", "test-prep": "elegant-minimal",
+  "faq-answer": "elegant-minimal", "pro-tip": "neon-data",
+  "testimonial-card": "elegant-minimal", "stats-spotlight": "neon-data",
+  "before-after": "pop-bold", "review-highlight": "elegant-minimal",
+  "case-study": "elegant-minimal", "social-counter": "neon-data",
+  "meme-card": "pop-bold", "quiz-poll": "pop-bold",
+  "this-or-that": "pop-bold", "caption-contest": "pop-bold",
+  "relatable-moment": "pop-bold", "fun-fact": "neon-data",
+  "instructor-feature": "elegant-minimal", "platform-update": "neon-data",
+  "day-in-life": "elegant-minimal", "office-tour": "elegant-minimal",
+  "meet-founder": "elegant-minimal",
+  "bold-cta": "luminous-hero", "special-offer": "urgency",
+  "flash-sale": "urgency", "referral-program": "luminous-hero",
+  "bundle-deal": "urgency", "seasonal-promo": "urgency",
+  "limited-time": "urgency",
+  "question-of-day": "pop-bold", "fill-in-blank": "pop-bold",
+  "hot-take": "pop-bold", "debate": "neon-data",
+  "story-time": "elegant-minimal", "throwback": "luminous-hero",
+  "new-feature": "neon-data", "coming-soon": "luminous-hero",
+  "launch-day": "luminous-hero", "event-invite": "neon-data",
+  "press-release": "elegant-minimal", "partnership": "elegant-minimal",
+  "booking-reminder": "elegant-minimal",
+};
+
+// Canvas layout configs (0-1 percentages)
+var CANVAS_LAYOUTS = {
+  "center-hero":  { hX: 0.5, hY: 0.35, hMax: 0.85, hSize: 0.07, hAlign: "center", sX: 0.5, sY: 0.55, sMax: 0.75, sSize: 0.035, sAlign: "center", lX: 0.5, lY: 0.2, lSize: 0.02, barH: 0.12 },
+  "top-heavy":    { hX: 0.5, hY: 0.22, hMax: 0.85, hSize: 0.065, hAlign: "center", sX: 0.5, sY: 0.42, sMax: 0.8, sSize: 0.032, sAlign: "center", lX: 0.5, lY: 0.1, lSize: 0.018, barH: 0.12 },
+  "bottom-card":  { hX: 0.5, hY: 0.6, hMax: 0.85, hSize: 0.06, hAlign: "center", sX: 0.5, sY: 0.75, sMax: 0.8, sSize: 0.03, sAlign: "center", lX: 0.5, lY: 0.5, lSize: 0.018, barH: 0.1 },
+  "left-aligned": { hX: 0.1, hY: 0.3, hMax: 0.75, hSize: 0.065, hAlign: "left", sX: 0.1, sY: 0.5, sMax: 0.7, sSize: 0.032, sAlign: "left", lX: 0.1, lY: 0.18, lSize: 0.018, barH: 0.12 },
+  "split-half":   { hX: 0.5, hY: 0.28, hMax: 0.9, hSize: 0.075, hAlign: "center", sX: 0.5, sY: 0.68, sMax: 0.8, sSize: 0.035, sAlign: "center", lX: -1, lY: -1, lSize: 0, barH: 0.1 },
+  "stat-focus":   { hX: 0.5, hY: 0.4, hMax: 0.9, hSize: 0.12, hAlign: "center", sX: 0.5, sY: 0.6, sMax: 0.8, sSize: 0.035, sAlign: "center", lX: 0.5, lY: 0.22, lSize: 0.02, barH: 0.1 },
+};
+
+var TEMPLATE_LAYOUT_MAP = {
+  "custom-post": "center-hero",
+  "pass-celebration": "center-hero", "achievement-unlocked": "center-hero",
+  "milestone-reached": "stat-focus", "welcome-aboard": "center-hero",
+  "birthday-wish": "center-hero", "anniversary": "center-hero",
+  "student-spotlight": "top-heavy",
+  "driving-tip": "top-heavy", "edt-lesson": "left-aligned",
+  "did-you-know": "center-hero", "safety-alert": "center-hero",
+  "road-rules": "left-aligned", "test-prep": "top-heavy",
+  "faq-answer": "left-aligned", "pro-tip": "top-heavy",
+  "testimonial-card": "bottom-card", "stats-spotlight": "stat-focus",
+  "before-after": "split-half", "review-highlight": "bottom-card",
+  "case-study": "left-aligned", "social-counter": "stat-focus",
+  "meme-card": "split-half", "quiz-poll": "top-heavy",
+  "this-or-that": "split-half", "caption-contest": "bottom-card",
+  "relatable-moment": "center-hero", "fun-fact": "center-hero",
+  "instructor-feature": "bottom-card", "platform-update": "top-heavy",
+  "day-in-life": "left-aligned", "office-tour": "center-hero",
+  "meet-founder": "bottom-card",
+  "bold-cta": "center-hero", "special-offer": "center-hero",
+  "flash-sale": "stat-focus", "referral-program": "top-heavy",
+  "bundle-deal": "center-hero", "seasonal-promo": "center-hero",
+  "limited-time": "stat-focus",
+  "question-of-day": "center-hero", "fill-in-blank": "top-heavy",
+  "hot-take": "center-hero", "debate": "split-half",
+  "story-time": "left-aligned", "throwback": "bottom-card",
+  "new-feature": "top-heavy", "coming-soon": "center-hero",
+  "launch-day": "center-hero", "event-invite": "left-aligned",
+  "press-release": "left-aligned", "partnership": "center-hero",
+  "booking-reminder": "center-hero",
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════
 
 var currentStep = 1;
 var selectedPlatforms = [];
 var generateAll = false;
-var useAi = false;
-var activePillar = "success-stories";
+var useAi = true;
+var activeCategory = "all";
 var selectedTemplate = null;
 var currentContentOptions = [];
 var currentContentIndex = 0;
 var storedApiKey = "";
+var brandKit = {
+  name: "drivzu.ie", primaryColor: "#0d9488", secondaryColor: "#F97316",
+  accentColor: "#14b8a6", darkColor: "#0f172a", lightColor: "#f0fdfa",
+  fontFamily: "Plus Jakarta Sans", industry: "Driving School",
+  voiceTone: "Friendly, encouraging, professional but fun. Irish context.",
+  logoBase64: null, brandName: "drivzu.ie",
+};
+var webhookUrl = "";
+var logoImages = { motionCombo: null, wordmark: null, monogram: null };
+var previewVariations = [];
+var activeVariation = 0;
+var currentPlatformIdx = 0;
+var generatingPlatforms = [];
+var apiCallCount = 0;
+var apiCallResetTime = Date.now();
+
+// ═══════════════════════════════════════════════════════════════════════
+// CANVAS COMPOSITOR — Triple-Layer Design Engine (Layer 2)
+// ═══════════════════════════════════════════════════════════════════════
+
+function getPreset(templateId) {
+  var presetId = TEMPLATE_PRESET_MAP[templateId] || "elegant-minimal";
+  return TEXT_PRESETS[presetId] || TEXT_PRESETS["elegant-minimal"];
+}
+
+function getLayout(templateId) {
+  var layoutId = TEMPLATE_LAYOUT_MAP[templateId] || "center-hero";
+  return CANVAS_LAYOUTS[layoutId] || CANVAS_LAYOUTS["center-hero"];
+}
+
+// Word-wrap text to fit maxWidth
+function wrapText(ctx, text, maxWidth) {
+  if (!text) return [];
+  var words = text.split(" ");
+  var lines = [];
+  var currentLine = words[0] || "";
+
+  for (var i = 1; i < words.length; i++) {
+    var testLine = currentLine + " " + words[i];
+    if (ctx.measureText(testLine).width > maxWidth) {
+      lines.push(currentLine);
+      currentLine = words[i];
+    } else {
+      currentLine = testLine;
+    }
+  }
+  lines.push(currentLine);
+  return lines;
+}
+
+// Draw AI image scaled to cover the canvas (no letterboxing)
+function drawCoverFit(ctx, img, w, h) {
+  var imgRatio = img.width / img.height;
+  var canvasRatio = w / h;
+  var dw, dh, ox, oy;
+  if (imgRatio > canvasRatio) {
+    dh = h; dw = h * imgRatio;
+    ox = (w - dw) / 2; oy = 0;
+  } else {
+    dw = w; dh = w / imgRatio;
+    ox = 0; oy = (h - dh) / 2;
+  }
+  ctx.drawImage(img, ox, oy, dw, dh);
+}
+
+// Apply subtle color grading (brand tint overlay)
+function applyColorGrade(ctx, w, h) {
+  ctx.save();
+  ctx.globalCompositeOperation = "soft-light";
+  ctx.fillStyle = brandKit.primaryColor;
+  ctx.globalAlpha = 0.08;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+}
+
+// Multi-pass text rendering with effects
+function renderMultiPassText(ctx, text, x, y, fontSize, preset, isHeadline) {
+  var fontWeight = isHeadline ? preset.headlineWeight : preset.subtitleWeight;
+  var fontFam = brandKit.fontFamily || "Plus Jakarta Sans";
+  ctx.font = fontWeight + " " + Math.round(fontSize) + "px '" + fontFam + "', sans-serif";
+  ctx.textBaseline = "middle";
+
+  // Pass 1: Outer glow
+  if (preset.glowColor && isHeadline) {
+    ctx.save();
+    ctx.shadowColor = preset.glowColor;
+    ctx.shadowBlur = preset.glowBlur;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  // Pass 2: Drop shadow
+  ctx.save();
+  ctx.shadowColor = isHeadline ? preset.shadowColor : "rgba(0,0,0,0.3)";
+  ctx.shadowBlur = isHeadline ? preset.shadowBlur : 4;
+  ctx.shadowOffsetY = isHeadline ? preset.shadowOffsetY : 2;
+  ctx.fillStyle = isHeadline ? preset.headlineColor : preset.subtitleColor;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+
+  // Pass 3: Fill (gradient or solid) + stroke
+  if (isHeadline && preset.gradientColors) {
+    var grad = ctx.createLinearGradient(x, y - fontSize / 2, x, y + fontSize / 2);
+    grad.addColorStop(0, preset.gradientColors[0]);
+    grad.addColorStop(1, preset.gradientColors[1]);
+    ctx.fillStyle = grad;
+  } else {
+    ctx.fillStyle = isHeadline ? preset.headlineColor : preset.subtitleColor;
+  }
+  ctx.fillText(text, x, y);
+
+  // Optional stroke
+  if (isHeadline && preset.strokeColor) {
+    ctx.strokeStyle = preset.strokeColor;
+    ctx.lineWidth = preset.strokeWidth;
+    ctx.lineJoin = "round";
+    ctx.strokeText(text, x, y);
+    ctx.fillText(text, x, y);
+  }
+}
+
+// Render all text layers on the canvas
+function renderTextLayers(ctx, content, templateId, w, h) {
+  var preset = getPreset(templateId);
+  var layout = getLayout(templateId);
+  var fontFam = brandKit.fontFamily || "Plus Jakarta Sans";
+
+  // Determine headline text
+  var headline = content.headline || content.quote || content.question || content.name || "";
+  var subtitle = content.subtitle || content.source || "";
+  var label = content.tipNumber ? ("TIP #" + content.tipNumber) :
+              content.lessonNumber ? ("EDT LESSON " + content.lessonNumber) :
+              content.statNumber ? content.statNumber :
+              content.offerValue ? content.offerValue : null;
+
+  // Label (small tag above headline)
+  if (label && layout.lX >= 0) {
+    var labelSize = Math.round(layout.lSize * h);
+    ctx.font = preset.labelWeight + " " + labelSize + "px '" + fontFam + "', sans-serif";
+    ctx.textAlign = layout.hAlign;
+    ctx.textBaseline = "middle";
+
+    var lx = layout.lX * w;
+    var ly = layout.lY * h;
+
+    if (preset.labelBg) {
+      var lw = ctx.measureText(label).width + labelSize * 1.5;
+      var lh = labelSize * 2;
+      var lbx = layout.hAlign === "center" ? lx - lw / 2 : lx;
+      ctx.fillStyle = preset.labelBg;
+      roundRect(ctx, lbx, ly - lh / 2, lw, lh, labelSize * 0.5);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = preset.labelColor;
+    ctx.fillText(label, lx, ly);
+  }
+
+  // Headline
+  if (headline) {
+    var hFontSize = Math.round(layout.hSize * h);
+    var hMaxW = layout.hMax * w;
+    ctx.font = preset.headlineWeight + " " + hFontSize + "px '" + fontFam + "', sans-serif";
+    ctx.textAlign = layout.hAlign;
+
+    var hLines = wrapText(ctx, headline, hMaxW);
+    var lineH = hFontSize * 1.15;
+    var startY = layout.hY * h - ((hLines.length - 1) * lineH) / 2;
+    var hx = layout.hAlign === "center" ? layout.hX * w :
+             layout.hAlign === "left" ? layout.hX * w : (1 - layout.hX) * w;
+
+    for (var i = 0; i < hLines.length; i++) {
+      renderMultiPassText(ctx, hLines[i], hx, startY + i * lineH, hFontSize, preset, true);
+    }
+  }
+
+  // Subtitle
+  if (subtitle) {
+    var sFontSize = Math.round(layout.sSize * h);
+    var sMaxW = layout.sMax * w;
+    ctx.font = preset.subtitleWeight + " " + sFontSize + "px '" + fontFam + "', sans-serif";
+    ctx.textAlign = layout.sAlign;
+
+    var sLines = wrapText(ctx, subtitle, sMaxW);
+    var sLineH = sFontSize * 1.4;
+    var sStartY = layout.sY * h - ((sLines.length - 1) * sLineH) / 2;
+    var sx = layout.sAlign === "center" ? layout.sX * w :
+             layout.sAlign === "left" ? layout.sX * w : (1 - layout.sX) * w;
+
+    for (var j = 0; j < sLines.length; j++) {
+      renderMultiPassText(ctx, sLines[j], sx, sStartY + j * sLineH, sFontSize, preset, false);
+    }
+  }
+}
+
+// Rounded rectangle helper
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+// Render logo bar at bottom
+function renderLogoBar(ctx, w, h, templateId) {
+  var layout = getLayout(templateId);
+  var barH = Math.max(60, Math.round(layout.barH * h));
+  var barY = h - barH;
+
+  // Dark bar background
+  ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+  ctx.fillRect(0, barY, w, barH);
+
+  // Teal accent line at top
+  var accentGrad = ctx.createLinearGradient(0, barY, w, barY);
+  accentGrad.addColorStop(0, brandKit.primaryColor || "#0d9488");
+  accentGrad.addColorStop(1, brandKit.accentColor || "#14b8a6");
+  ctx.fillStyle = accentGrad;
+  ctx.fillRect(0, barY, w, 3);
+
+  // Logo image (left side — prefer custom brand logo over default)
+  var logoImg = logoImages.custom || logoImages.motionCombo;
+  if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
+    var logoH = barH * 0.45;
+    var logoW = logoH * (logoImg.naturalWidth / logoImg.naturalHeight);
+    var logoX = Math.round(w * 0.04);
+    var logoY = barY + (barH - logoH) / 2 + 2;
+    ctx.drawImage(logoImg, logoX, logoY, logoW, logoH);
+  }
+
+  // Brand URL (right side)
+  var urlFontSize = Math.round(barH * 0.26);
+  var fontFam = brandKit.fontFamily || "Plus Jakarta Sans";
+  ctx.font = "500 " + urlFontSize + "px '" + fontFam + "', sans-serif";
+  ctx.fillStyle = "#94a3b8";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  ctx.fillText(brandKit.brandName || brandKit.name || "drivzu.ie", w - Math.round(w * 0.04), barY + barH / 2 + 2);
+  ctx.textAlign = "left";
+}
+
+// Main composite function
+function compositePost(aiImageBase64, templateId, content, w, h) {
+  return new Promise(function(resolve, reject) {
+    var canvas = document.getElementById("composite-canvas");
+    canvas.width = w;
+    canvas.height = h;
+    var ctx = canvas.getContext("2d");
+
+    var img = new Image();
+    img.onload = function() {
+      try {
+        // 1. Draw AI design image (cover-fit)
+        drawCoverFit(ctx, img, w, h);
+
+        // 2. Color grading
+        applyColorGrade(ctx, w, h);
+
+        // 3. Render text layers with style preset
+        renderTextLayers(ctx, content, templateId, w, h);
+
+        // 4. Render logo bar
+        renderLogoBar(ctx, w, h, templateId);
+
+        // 5. Export
+        var dataUrl = canvas.toDataURL("image/png");
+        resolve(dataUrl);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    img.onerror = function() { reject(new Error("Failed to load AI image")); };
+    img.src = "data:image/png;base64," + aiImageBase64;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// UI RENDERING
+// ═══════════════════════════════════════════════════════════════════════
 
 function renderPlatforms() {
-  document.getElementById("platform-grid").innerHTML = PLATFORMS.map(function(p) {
-    return '<div class="platform-btn" data-id="'+p.id+'" onclick="selectPlatform(\''+p.id+'\')">' +
-      '<div class="icon">'+p.icon+'</div><div class="name">'+p.name+'</div><div class="dims">'+p.dims+'</div></div>';
+  var grid = document.getElementById("platform-grid");
+  grid.innerHTML = PLATFORMS.map(function(p) {
+    return '<div class="platform-btn" data-id="' + p.id + '" onclick="selectPlatform(\'' + p.id + '\')">' +
+      '<div class="icon">' + p.icon + '</div><div class="name">' + p.name + '</div><div class="dims">' + p.dims + '</div></div>';
   }).join("");
 }
 
-function renderPillars() {
-  document.getElementById("pillar-tabs").innerHTML = PILLARS.map(function(p) {
-    return '<div class="pillar-tab'+(p.id === activePillar ? ' active' : '')+'" onclick="selectPillar(\''+p.id+'\')">'+p.name+'</div>';
+function renderCategories() {
+  var tabs = document.getElementById("category-tabs");
+  tabs.innerHTML = CATEGORIES.map(function(c) {
+    return '<div class="category-tab' + (c.id === activeCategory ? ' active' : '') + '" onclick="selectCategory(\'' + c.id + '\')">' + c.name + '</div>';
   }).join("");
 }
 
 function renderTemplates() {
-  var filtered = TEMPLATES.filter(function(t) { return t.pillar === activePillar; });
-  document.getElementById("template-list").innerHTML = filtered.map(function(t) {
-    return '<div class="template-card'+(selectedTemplate === t.id ? ' selected' : '')+'" onclick="selectTemplate(\''+t.id+'\')">' +
-      '<div class="swatch" style="background:'+t.color+'"></div>' +
-      '<div class="info"><div class="tname">'+t.name+'</div><div class="tdesc">'+t.desc+'</div></div></div>';
+  var filtered = activeCategory === "all" ? TEMPLATES : TEMPLATES.filter(function(t) { return t.cat === activeCategory; });
+  var grid = document.getElementById("template-grid");
+  grid.innerHTML = filtered.map(function(t) {
+    return '<div class="tmpl-card' + (selectedTemplate === t.id ? ' selected' : '') + '" onclick="selectTemplate(\'' + t.id + '\')">' +
+      '<div class="swatch" style="background:' + t.color + '">' + t.icon + '</div>' +
+      '<div class="tname">' + t.name + '</div></div>';
   }).join("");
 }
 
 function renderContentForm() {
   var form = document.getElementById("content-form");
   if (!selectedTemplate) { form.innerHTML = ""; return; }
-  var fields = FORM_FIELDS[selectedTemplate] || [];
+
+  var tmpl = TEMPLATES.filter(function(t) { return t.id === selectedTemplate; })[0];
+  if (tmpl) document.getElementById("content-title").textContent = tmpl.name;
+
+  var fields = FORM_FIELDS[selectedTemplate] || ["headline:Headline::60", "subtitle:Subtitle::120"];
   form.innerHTML = fields.map(function(f) {
     var parts = f.split(":");
-    var key = parts[0], label = parts[1], placeholder = parts[2], maxOrOpts = parts[3];
+    var key = parts[0], label = parts[1], placeholder = parts[2] || "", maxOrOpts = parts[3] || "120";
+
     if (placeholder === "select") {
       var opts = maxOrOpts.split(",");
-      return '<div class="form-group"><label>'+label+'</label>' +
-        '<select id="field-'+key+'" data-key="'+key+'">' +
-        opts.map(function(o) { return '<option value="'+o+'">'+o+'</option>'; }).join("") +
+      return '<div class="form-group"><label>' + label + '</label>' +
+        '<select id="field-' + key + '" data-key="' + key + '">' +
+        opts.map(function(o) { return '<option value="' + o + '">' + o + '</option>'; }).join("") +
         '</select></div>';
     }
     var max = parseInt(maxOrOpts) || 120;
     if (max > 100) {
-      return '<div class="form-group"><label>'+label+' <span class="counter" id="counter-'+key+'">0/'+max+'</span></label>' +
-        '<textarea id="field-'+key+'" data-key="'+key+'" maxlength="'+max+'" placeholder="'+(placeholder||'')+'" oninput="updateCounter(\''+key+'\','+max+')"></textarea></div>';
+      return '<div class="form-group"><label>' + label + ' <span class="counter" id="counter-' + key + '">0/' + max + '</span></label>' +
+        '<textarea id="field-' + key + '" data-key="' + key + '" maxlength="' + max + '" placeholder="' + placeholder + '" oninput="updateCounter(\'' + key + '\',' + max + ')"></textarea></div>';
     }
-    return '<div class="form-group"><label>'+label+' <span class="counter" id="counter-'+key+'">0/'+max+'</span></label>' +
-      '<input type="text" id="field-'+key+'" data-key="'+key+'" maxlength="'+max+'" placeholder="'+(placeholder||'')+'" oninput="updateCounter(\''+key+'\','+max+')"></div>';
+    return '<div class="form-group"><label>' + label + ' <span class="counter" id="counter-' + key + '">0/' + max + '</span></label>' +
+      '<input type="text" id="field-' + key + '" data-key="' + key + '" maxlength="' + max + '" placeholder="' + placeholder + '" oninput="updateCounter(\'' + key + '\',' + max + ')"></div>';
   }).join("");
 }
 
@@ -417,13 +1275,17 @@ function fillFormWithContent(content) {
   fields.forEach(function(f) {
     var key = f.split(":")[0];
     var el = document.getElementById("field-" + key);
-    if (el && content[key]) {
+    if (el && content[key] != null) {
       el.value = (key === "answers" && Array.isArray(content[key])) ? content[key].join(" | ") : content[key];
       var counter = document.getElementById("counter-" + key);
       if (counter) counter.textContent = el.value.length + "/" + (parseInt(f.split(":")[3]) || 120);
     }
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// INTERACTION HANDLERS
+// ═══════════════════════════════════════════════════════════════════════
 
 function selectPlatform(id) {
   if (generateAll) return;
@@ -464,7 +1326,7 @@ function saveApiKey() {
   }
 }
 
-function selectPillar(id) { activePillar = id; renderPillars(); renderTemplates(); }
+function selectCategory(id) { activeCategory = id; renderCategories(); renderTemplates(); }
 function selectTemplate(id) { selectedTemplate = id; renderTemplates(); updateButtons(); }
 function updateCounter(key, max) {
   var el = document.getElementById("field-" + key);
@@ -484,7 +1346,8 @@ function shuffleContent() {
 function updateButtons() {
   var btn = document.getElementById("btn-next");
   var back = document.getElementById("btn-back");
-  btn.classList.toggle("ai-mode", useAi && currentStep === 3);
+  btn.classList.toggle("ai-mode", useAi && currentStep >= 3);
+
   if (currentStep === 1) {
     btn.disabled = selectedPlatforms.length === 0;
     btn.textContent = selectedPlatforms.length > 0
@@ -497,34 +1360,55 @@ function updateButtons() {
     back.classList.remove("hidden");
   } else if (currentStep === 3) {
     btn.disabled = false;
-    var suffix = selectedPlatforms.length > 1 ? "s" : "";
-    btn.textContent = useAi ? ("Generate AI Post" + suffix + " \u2728") : ("Generate Post" + suffix + " \u2728");
+    btn.textContent = useAi ? "Generate AI Design \u2728" : "Generate Post \u2728";
+    back.classList.remove("hidden");
+  } else if (currentStep === 4) {
+    btn.disabled = previewVariations.length === 0;
+    btn.textContent = "Next \u2014 Schedule / Share";
+    back.classList.remove("hidden");
+  } else if (currentStep === 5) {
+    btn.disabled = false;
+    btn.textContent = "Schedule Post \ud83d\udce8";
     back.classList.remove("hidden");
   }
 }
 
 function showStep(n) {
   currentStep = n;
-  [1,2,3].forEach(function(i) {
+  [1, 2, 3, 4, 5].forEach(function(i) {
     document.getElementById("step-" + i).classList.toggle("hidden", i !== n);
     document.getElementById("ind-" + i).classList.toggle("active", i === n);
     document.getElementById("ind-" + i).classList.toggle("done", i < n);
   });
+  var btnNext = document.getElementById("btn-next");
+  btnNext.classList.remove("hidden");
   updateButtons();
 }
 
 function goNext() {
   if (currentStep === 1 && selectedPlatforms.length > 0) {
-    showStep(2); renderPillars(); renderTemplates();
+    showStep(2); renderCategories(); renderTemplates();
   } else if (currentStep === 2 && selectedTemplate) {
     showStep(3); renderContentForm();
     parent.postMessage({ pluginMessage: { type: "get-content", templateId: selectedTemplate } }, "*");
   } else if (currentStep === 3) {
     generatePost();
+  } else if (currentStep === 4) {
+    initScheduleStep(); showStep(5);
+  } else if (currentStep === 5) {
+    submitScheduledPost();
   }
 }
 
-function goBack() { if (currentStep > 1) showStep(currentStep - 1); }
+function goBack() {
+  if (currentStep === 5) {
+    showStep(4);
+  } else if (currentStep === 4) {
+    showStep(3);
+  } else if (currentStep > 1) {
+    showStep(currentStep - 1);
+  }
+}
 
 function getFormContent() {
   var content = {};
@@ -536,11 +1420,30 @@ function getFormContent() {
   return content;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// GENERATION FLOW
+// ═══════════════════════════════════════════════════════════════════════
+
 function generatePost() {
   var content = getFormContent();
 
   if (useAi) {
-    showStatus("ai-loading", '<span class="spinner ai"></span>Generating AI backgrounds... this may take a moment');
+    // Move to preview step and show loading
+    showStep(4);
+    document.getElementById("preview-loading").classList.remove("hidden");
+    document.getElementById("preview-result").classList.add("hidden");
+    showPreviewStatus("ai-loading", '<span class="spinner ai"></span>Generating AI design...');
+
+    previewVariations = [];
+    activeVariation = 0;
+    currentPlatformIdx = 0;
+
+    // Start with first platform for preview
+    var firstPlatform = PLATFORMS.filter(function(p) { return selectedPlatforms.indexOf(p.id) >= 0; })[0];
+    if (!firstPlatform) return;
+
+    generatingPlatforms = selectedPlatforms.slice();
+
     parent.postMessage({ pluginMessage: {
       type: "generate", templateId: selectedTemplate,
       platformIds: selectedPlatforms, content: content, useAi: true,
@@ -554,13 +1457,170 @@ function generatePost() {
   }
 }
 
-// ── Gemini API Call (runs in UI iframe) ──────────────────────────────
+// Called when Gemini returns an AI image — composite it with Canvas
+function handleAiImage(imageBase64, platformId, templateId, platformIndex, totalPlatforms) {
+  var content = getFormContent();
+  var platform = PLATFORMS.filter(function(p) { return p.id === platformId; })[0];
+  if (!platform) return;
 
-function callGeminiApi(apiKey, prompt, aspectRatio, platformId, templateId, content, index, total) {
-  var model = "gemini-2.5-flash-image"; // Nano Banana — FREE tier, 500 images/day
+  showPreviewStatus("ai-loading", '<span class="spinner ai"></span>Compositing design ' + (platformIndex + 1) + ' of ' + totalPlatforms + '...');
+
+  // Wait for fonts to be ready, then composite
+  document.fonts.ready.then(function() {
+    return compositePost(imageBase64, templateId, content, platform.w, platform.h);
+  }).then(function(dataUrl) {
+    // Store variation
+    previewVariations.push({
+      dataUrl: dataUrl,
+      imageBase64: dataUrl.split(",")[1],
+      platformId: platformId,
+      templateId: templateId,
+      content: content,
+      platformIndex: platformIndex,
+      totalPlatforms: totalPlatforms,
+    });
+
+    // Show first preview
+    if (previewVariations.length === 1) {
+      showPreview(0);
+    }
+
+    // If this was the last platform, update UI
+    if (platformIndex === totalPlatforms - 1) {
+      showPreviewStatus("success", "\u2728 All " + totalPlatforms + " design" + (totalPlatforms > 1 ? "s" : "") + " ready!");
+      renderVariationDots();
+    }
+  }).catch(function(err) {
+    showPreviewStatus("error", "\u2717 Compositing failed: " + err.message);
+  });
+}
+
+function showPreview(index) {
+  if (index < 0 || index >= previewVariations.length) return;
+  activeVariation = index;
+  var v = previewVariations[index];
+
+  document.getElementById("preview-loading").classList.add("hidden");
+  document.getElementById("preview-result").classList.remove("hidden");
+  document.getElementById("preview-img").src = v.dataUrl;
+  renderVariationDots();
+}
+
+function renderVariationDots() {
+  var container = document.getElementById("variation-dots");
+  if (previewVariations.length <= 1) { container.innerHTML = ""; return; }
+  container.innerHTML = previewVariations.map(function(v, i) {
+    return '<div class="variation-dot' + (i === activeVariation ? ' active' : '') + '" onclick="showPreview(' + i + ')"></div>';
+  }).join("");
+}
+
+function regeneratePreview() {
+  if (!selectedTemplate || selectedPlatforms.length === 0) return;
+  previewVariations = [];
+  activeVariation = 0;
+  document.getElementById("preview-loading").classList.remove("hidden");
+  document.getElementById("preview-result").classList.add("hidden");
+  showPreviewStatus("ai-loading", '<span class="spinner ai"></span>Regenerating AI design...');
+
+  var content = getFormContent();
+  parent.postMessage({ pluginMessage: {
+    type: "generate", templateId: selectedTemplate,
+    platformIds: selectedPlatforms, content: content, useAi: true,
+  }}, "*");
+}
+
+function useThisDesign() {
+  // Send all composites to Figma
+  for (var i = 0; i < previewVariations.length; i++) {
+    var v = previewVariations[i];
+    parent.postMessage({ pluginMessage: {
+      type: "composite-ready",
+      imageBase64: v.imageBase64,
+      platformId: v.platformId,
+      templateId: v.templateId,
+      content: v.content,
+      platformIndex: v.platformIndex,
+      totalPlatforms: v.totalPlatforms,
+    }}, "*");
+  }
+  showPreviewStatus("success", "\u2728 Inserted into Figma!");
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CUSTOM PROMPT GENERATION — AI builds the design prompt from user input
+// ═══════════════════════════════════════════════════════════════════════
+
+function generateCustomDesignPrompt(apiKey, idea, mood, platformId) {
+  var moodStyles = {
+    "Celebratory": "Festive, radiant, warm gold and confetti accents, light burst effects, joyful energy",
+    "Professional": "Clean, structured, corporate-grade typography areas, subtle gradients, trust-building blues and teals",
+    "Fun & Playful": "Vibrant, bold colors, dynamic shapes, energetic, pop-art influences, youthful",
+    "Urgent & Bold": "High contrast, red and orange accents, dramatic lighting, countdown energy, FOMO-inducing",
+    "Inspiring": "Expansive, open sky feel, sunrise gradients, aspirational, epic cinematic scale",
+    "Minimal & Clean": "Lots of negative space, muted palette, elegant, editorial, whisper-quiet sophistication",
+    "Dark & Dramatic": "Deep blacks, neon accents, moody, cinematic, volumetric light cutting through darkness",
+    "Bright & Energetic": "Saturated colors, gradient mesh, dynamic angles, summer vibes, dopamine-inducing"
+  };
+  var styleDesc = moodStyles[mood] || moodStyles["Professional"];
+  var pc = brandKit.primaryColor || "#0d9488";
+  var sc = brandKit.secondaryColor || "#F97316";
+  var dc = brandKit.darkColor || "#0f172a";
+
+  var metaPrompt = "You are a creative director designing a social media post image. " +
+    "The user wants a post about: \"" + idea + "\". " +
+    "Visual mood: " + mood + " (" + styleDesc + "). " +
+    "Brand colors: primary " + pc + ", secondary " + sc + ", dark " + dc + ". " +
+    "Generate a detailed image generation prompt (150-200 words) for an AI image model. " +
+    "The prompt must describe a stunning ABSTRACT DESIGN composition (no text, no letters, no logos, no words in the image). " +
+    "Include: scene description, color palette using the brand colors, lighting/effects, spatial zones (where text will be overlaid), texture/grain. " +
+    "Style: Behance-featured, Apple marketing quality, cinematic. " +
+    "End with: 'No text, no letters, no logos, no words, no watermarks.' " +
+    "Return JSON only: {\"prompt\": \"...\"}";
+
+  return fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: metaPrompt }] }],
+      generationConfig: { responseMimeType: "application/json" }
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    try {
+      var text = data.candidates[0].content.parts[0].text;
+      var parsed = JSON.parse(text);
+      return parsed.prompt || "";
+    } catch (e) {
+      return "";
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GEMINI API CALLS
+// ═══════════════════════════════════════════════════════════════════════
+
+function callGeminiImage(apiKey, prompt, aspectRatio, platformId, templateId, content, index, total) {
+  // Rate limit tracking — reset counter every 24 hours
+  if (Date.now() - apiCallResetTime > 86400000) {
+    apiCallCount = 0;
+    apiCallResetTime = Date.now();
+  }
+  apiCallCount++;
+  if (apiCallCount > 450) {
+    showPreviewStatus("error", "\u2717 Approaching daily API limit (~500 calls). Consider waiting until tomorrow.");
+    return;
+  }
+  if (apiCallCount === 400) {
+    showPreviewStatus("ai-loading", '<span class="spinner ai"></span>Note: ~400 API calls used today (limit: 500). ' +
+      'Generating image ' + (index + 1) + ' of ' + total + '...');
+  }
+
+  var model = "gemini-2.5-flash-image";
   var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + apiKey;
 
-  showStatus("ai-loading", '<span class="spinner ai"></span>Generating AI image ' + (index+1) + ' of ' + total + '...');
+  showPreviewStatus("ai-loading", '<span class="spinner ai"></span>AI generating image ' + (index + 1) + ' of ' + total + '...');
 
   fetch(url, {
     method: "POST",
@@ -576,7 +1636,7 @@ function callGeminiApi(apiKey, prompt, aspectRatio, platformId, templateId, cont
   .then(function(res) { return res.json(); })
   .then(function(data) {
     if (data.error) {
-      showStatus("error", "\u2717 API Error: " + (data.error.message || "Unknown error"));
+      showPreviewStatus("error", "\u2717 API Error: " + (data.error.message || "Unknown error"));
       return;
     }
 
@@ -592,24 +1652,734 @@ function callGeminiApi(apiKey, prompt, aspectRatio, platformId, templateId, cont
     }
 
     if (!imageData) {
-      showStatus("error", "\u2717 No image returned. Try a different template or model.");
+      showPreviewStatus("error", "\u2717 No image returned from AI. Try regenerating.");
       return;
     }
 
-    parent.postMessage({ pluginMessage: {
-      type: "ai-image-ready",
-      imageBase64: imageData,
-      platformId: platformId,
-      templateId: templateId,
-      content: content,
-      platformIndex: index,
-      totalPlatforms: total,
-    }}, "*");
+    // Composite with Canvas instead of sending raw to Figma
+    handleAiImage(imageData, platformId, templateId, index, total);
   })
   .catch(function(err) {
-    showStatus("error", "\u2717 Network error: " + err.message);
+    showPreviewStatus("error", "\u2717 Network error: " + err.message);
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// AI CAPTION GENERATION
+// ═══════════════════════════════════════════════════════════════════════
+
+function generateCaption() {
+  if (!storedApiKey) {
+    parent.postMessage({ pluginMessage: { type: "get-api-key" } }, "*");
+    return;
+  }
+
+  var content = getFormContent();
+  var tmpl = TEMPLATES.filter(function(t) { return t.id === selectedTemplate; })[0];
+  var platformName = selectedPlatforms[0] || "instagram";
+
+  var captionPrompt = "You are the social media voice for " + (brandKit.brandName || "Drivzu") +
+    " — a brand-new Irish " + (brandKit.industry || "driving lesson booking") + " platform that just launched. " +
+    "Write a scroll-stopping " + platformName + " caption for this post: \"" + (tmpl ? tmpl.name : "") + "\". " +
+    "Post content: " + JSON.stringify(content) + ". " +
+    "Voice: " + (brandKit.voiceTone || "Like a sound mate who also knows everything about driving. Friendly, witty, encouraging. Irish.") + " " +
+    "Audience: Irish learner drivers aged 17-30. " +
+    "Rules: " +
+    "- First line must be a hook that stops the scroll. " +
+    "- Use Irish slang naturally (grand, class, sound, deadly, fair play, craic). " +
+    "- Short punchy sentences. No corporate waffle. No generic filler. " +
+    (platformName === "twitter" ? "- Under 240 chars to leave room for link. " : "- 2-4 short lines max. ") +
+    "- 1-2 emoji max, placed naturally — never start with emoji. " +
+    "- End with a direct CTA pointing to drivzu.ie. " +
+    "Return JSON only: {\"caption\": \"...\", \"hashtags\": [\"#...\"], \"cta\": \"...\"}. " +
+    "Hashtags: 5-8 mix of popular (#LearnerDriver #DrivingTest #Ireland) and niche (#EDT #DrivingLessons #PassedMyTest #DublinDriving). " +
+    "CTA: Short and direct ('Book at drivzu.ie' or 'Link in bio').";
+
+  var model = "gemini-2.5-flash";
+  var url = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + storedApiKey;
+
+  document.getElementById("caption-text").value = "Generating AI caption...";
+
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: captionPrompt }] }],
+      generationConfig: { responseMimeType: "application/json" }
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    try {
+      var text = data.candidates[0].content.parts[0].text;
+      var parsed = JSON.parse(text);
+      document.getElementById("caption-text").value = (parsed.caption || "") + (parsed.cta ? "\n\n" + parsed.cta : "");
+      document.getElementById("hashtag-area").textContent = (parsed.hashtags || []).join(" ");
+    } catch (e) {
+      document.getElementById("caption-text").value = "Could not parse AI response. Try again.";
+    }
+  })
+  .catch(function(err) {
+    document.getElementById("caption-text").value = "Error: " + err.message;
+  });
+}
+
+function copyCaption() {
+  var text = document.getElementById("caption-text").value;
+  var hashtags = document.getElementById("hashtag-area").textContent;
+  navigator.clipboard.writeText(text + "\n\n" + hashtags).then(function() {
+    showPreviewStatus("success", "\u2713 Caption copied to clipboard!");
+  });
+}
+
+function copyHashtags() {
+  var hashtags = document.getElementById("hashtag-area").textContent;
+  navigator.clipboard.writeText(hashtags).then(function() {
+    showPreviewStatus("success", "\u2713 Hashtags copied!");
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// EXPORT FUNCTIONS
+// ═══════════════════════════════════════════════════════════════════════
+
+function downloadPng() {
+  if (previewVariations.length === 0) return;
+  var v = previewVariations[activeVariation];
+  var link = document.createElement("a");
+  link.download = (v.templateId || "post") + "-" + (v.platformId || "export") + ".png";
+  link.href = v.dataUrl;
+  link.click();
+  showPreviewStatus("success", "\u2713 PNG downloaded!");
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// ANIMATION PRESETS — per-template animation configurations
+// ═══════════════════════════════════════════════════════════════════════
+
+var ANIM_PRESETS = {
+  "custom-post":          { type: "glow",       frames: 16, speed: 0.6 },
+  "pass-celebration":     { type: "confetti",   frames: 20, speed: 1.0 },
+  "achievement-unlocked": { type: "sparkle",    frames: 18, speed: 0.8 },
+  "milestone-reached":    { type: "pulse",      frames: 16, speed: 0.7 },
+  "welcome-aboard":       { type: "glow",       frames: 14, speed: 0.6 },
+  "birthday-wish":        { type: "confetti",   frames: 20, speed: 1.0 },
+  "anniversary":          { type: "sparkle",    frames: 16, speed: 0.6 },
+  "student-spotlight":    { type: "glow",       frames: 14, speed: 0.5 },
+  "driving-tip":          { type: "drift",      frames: 16, speed: 0.8 },
+  "edt-lesson":           { type: "reveal",     frames: 15, speed: 0.7 },
+  "did-you-know":         { type: "float",      frames: 18, speed: 0.5 },
+  "safety-alert":         { type: "pulse",      frames: 14, speed: 1.0 },
+  "road-rules":           { type: "drift",      frames: 14, speed: 0.7 },
+  "test-prep":            { type: "glow",       frames: 14, speed: 0.6 },
+  "faq-answer":           { type: "float",      frames: 12, speed: 0.5 },
+  "pro-tip":              { type: "sparkle",    frames: 14, speed: 0.7 },
+  "testimonial-card":     { type: "float",      frames: 12, speed: 0.4 },
+  "stats-spotlight":      { type: "pulse",      frames: 16, speed: 0.8 },
+  "before-after":         { type: "reveal",     frames: 16, speed: 0.7 },
+  "review-highlight":     { type: "sparkle",    frames: 14, speed: 0.5 },
+  "case-study":           { type: "glow",       frames: 12, speed: 0.5 },
+  "social-counter":       { type: "pulse",      frames: 16, speed: 0.9 },
+  "meme-card":            { type: "bounce",     frames: 14, speed: 1.0 },
+  "quiz-poll":            { type: "sparkle",    frames: 18, speed: 0.8 },
+  "this-or-that":         { type: "bounce",     frames: 14, speed: 0.9 },
+  "caption-contest":      { type: "float",      frames: 14, speed: 0.5 },
+  "relatable-moment":     { type: "bounce",     frames: 14, speed: 1.0 },
+  "fun-fact":             { type: "sparkle",    frames: 16, speed: 0.7 },
+  "instructor-feature":   { type: "glow",       frames: 14, speed: 0.4 },
+  "platform-update":      { type: "pulse",      frames: 16, speed: 0.7 },
+  "day-in-life":          { type: "float",      frames: 12, speed: 0.5 },
+  "office-tour":          { type: "glow",       frames: 12, speed: 0.4 },
+  "meet-founder":         { type: "glow",       frames: 12, speed: 0.4 },
+  "bold-cta":             { type: "pulse",      frames: 14, speed: 0.9 },
+  "special-offer":        { type: "confetti",   frames: 20, speed: 1.0 },
+  "flash-sale":           { type: "pulse",      frames: 16, speed: 1.0 },
+  "referral-program":     { type: "sparkle",    frames: 16, speed: 0.7 },
+  "bundle-deal":          { type: "pulse",      frames: 14, speed: 0.8 },
+  "seasonal-promo":       { type: "confetti",   frames: 18, speed: 0.8 },
+  "limited-time":         { type: "pulse",      frames: 14, speed: 1.0 },
+  "question-of-day":      { type: "float",      frames: 14, speed: 0.5 },
+  "fill-in-blank":        { type: "glow",       frames: 12, speed: 0.5 },
+  "hot-take":             { type: "bounce",     frames: 14, speed: 1.0 },
+  "debate":               { type: "drift",      frames: 14, speed: 0.6 },
+  "story-time":           { type: "float",      frames: 12, speed: 0.4 },
+  "throwback":            { type: "glow",       frames: 14, speed: 0.5 },
+  "new-feature":          { type: "sparkle",    frames: 16, speed: 0.8 },
+  "coming-soon":          { type: "pulse",      frames: 16, speed: 0.7 },
+  "launch-day":           { type: "confetti",   frames: 20, speed: 1.0 },
+  "event-invite":         { type: "sparkle",    frames: 16, speed: 0.7 },
+  "press-release":        { type: "glow",       frames: 12, speed: 0.4 },
+  "partnership":          { type: "sparkle",    frames: 14, speed: 0.6 },
+  "booking-reminder":     { type: "pulse",      frames: 12, speed: 0.6 },
+};
+
+// Render a single animation frame on top of the base composite
+function renderAnimationFrame(ctx, w, h, frameIdx, totalFrames, preset) {
+  var t = frameIdx / totalFrames;
+  var seed = frameIdx * 137;
+  function prand() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+
+  var pc = brandKit.primaryColor || "#0d9488";
+
+  if (preset.type === "confetti") {
+    for (var i = 0; i < 25; i++) {
+      var cx = prand() * w;
+      var cy = (prand() * h * 1.3 + h * t * preset.speed * 1.5) % (h * 1.3) - h * 0.15;
+      var size = 4 + prand() * 10;
+      var rot = t * 360 * (prand() - 0.5) * 2;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rot * Math.PI / 180);
+      var colors = [pc, "#F97316", "#FBBF24", "#FFFFFF", "#ec4899"];
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.globalAlpha = 0.7 + prand() * 0.3;
+      ctx.fillRect(-size / 2, -size / 4, size, size / 2);
+      ctx.restore();
+    }
+  } else if (preset.type === "sparkle") {
+    for (var i = 0; i < 15; i++) {
+      var sx = prand() * w;
+      var sy = prand() * h * 0.85;
+      var phase = (t + prand()) % 1;
+      var alpha = Math.sin(phase * Math.PI) * 0.8;
+      var size = 2 + prand() * 6;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = prand() > 0.5 ? "#FFFFFF" : pc;
+      ctx.beginPath();
+      ctx.arc(sx, sy, size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  } else if (preset.type === "pulse") {
+    var pulseAlpha = 0.08 + Math.sin(t * Math.PI * 2) * 0.06;
+    ctx.save();
+    ctx.globalAlpha = pulseAlpha;
+    ctx.fillStyle = pc;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+    // Radial glow pulse
+    var glowSize = w * 0.4 + Math.sin(t * Math.PI * 2) * w * 0.1;
+    ctx.save();
+    var grad = ctx.createRadialGradient(w / 2, h * 0.4, 0, w / 2, h * 0.4, glowSize);
+    grad.addColorStop(0, pc);
+    grad.addColorStop(1, "transparent");
+    ctx.globalAlpha = 0.1 + Math.sin(t * Math.PI * 2) * 0.05;
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  } else if (preset.type === "glow") {
+    var glowAlpha = 0.4 + Math.sin(t * Math.PI * 2) * 0.3;
+    ctx.save();
+    ctx.shadowColor = pc;
+    ctx.shadowBlur = 30 + Math.sin(t * Math.PI * 2) * 15;
+    ctx.globalAlpha = 0.02;
+    ctx.fillStyle = pc;
+    ctx.fillRect(w * 0.2, h * 0.2, w * 0.6, h * 0.1);
+    ctx.restore();
+  } else if (preset.type === "float") {
+    for (var i = 0; i < 10; i++) {
+      var fx = prand() * w;
+      var baseY = prand() * h;
+      var fy = baseY - t * h * 0.15 * preset.speed;
+      if (fy < -20) fy += h + 40;
+      var size = 3 + prand() * 8;
+      ctx.save();
+      ctx.globalAlpha = 0.15 + prand() * 0.2;
+      ctx.fillStyle = prand() > 0.5 ? "#FFFFFF" : pc;
+      ctx.beginPath();
+      ctx.arc(fx, fy, size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  } else if (preset.type === "drift") {
+    for (var i = 0; i < 8; i++) {
+      var dx = (prand() * w + t * w * 0.3 * preset.speed) % w;
+      var dy = prand() * h * 0.8;
+      ctx.save();
+      ctx.globalAlpha = 0.08 + prand() * 0.1;
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(dx, dy, 20 + prand() * 40, 2);
+      ctx.restore();
+    }
+  } else if (preset.type === "bounce") {
+    var bounceY = Math.abs(Math.sin(t * Math.PI * 2)) * 8;
+    ctx.save();
+    ctx.globalAlpha = 0.04;
+    ctx.fillStyle = pc;
+    ctx.translate(0, -bounceY);
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  } else if (preset.type === "reveal") {
+    var revealX = t * w * 1.2;
+    ctx.save();
+    ctx.globalAlpha = 0.06;
+    var rGrad = ctx.createLinearGradient(revealX - w * 0.1, 0, revealX + w * 0.1, 0);
+    rGrad.addColorStop(0, "transparent");
+    rGrad.addColorStop(0.5, "#FFFFFF");
+    rGrad.addColorStop(1, "transparent");
+    ctx.fillStyle = rGrad;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+}
+
+// Generate animated GIF frames from the composite
+async function generateGifFrames(variation) {
+  var templateId = variation.templateId;
+  var preset = ANIM_PRESETS[templateId] || { type: "glow", frames: 12, speed: 0.5 };
+  var totalFrames = preset.frames;
+
+  var baseImg = new Image();
+  await new Promise(function(resolve, reject) {
+    baseImg.onload = resolve;
+    baseImg.onerror = reject;
+    baseImg.src = variation.dataUrl;
+  });
+
+  // Use smaller size for GIF to keep file size reasonable
+  var scale = Math.min(1, 480 / baseImg.width);
+  var gw = Math.round(baseImg.width * scale);
+  var gh = Math.round(baseImg.height * scale);
+
+  var gifCanvas = document.createElement("canvas");
+  gifCanvas.width = gw;
+  gifCanvas.height = gh;
+  var gCtx = gifCanvas.getContext("2d");
+
+  var frames = [];
+  for (var f = 0; f < totalFrames; f++) {
+    gCtx.clearRect(0, 0, gw, gh);
+    gCtx.drawImage(baseImg, 0, 0, gw, gh);
+    renderAnimationFrame(gCtx, gw, gh, f, totalFrames, preset);
+    frames.push({
+      data: gCtx.getImageData(0, 0, gw, gh),
+      delay: 80,
+    });
+  }
+
+  return { frames: frames, width: gw, height: gh };
+}
+
+async function downloadGif() {
+  if (previewVariations.length === 0) return;
+  if (!window.encodeGif) {
+    showPreviewStatus("error", "\u2717 GIF library not loaded. Check your connection.");
+    return;
+  }
+
+  var v = previewVariations[activeVariation];
+  showPreviewStatus("loading", '<span class="spinner"></span>Generating animated GIF...');
+
+  try {
+    var result = await generateGifFrames(v);
+    var gifData = await window.encodeGif({
+      width: result.width,
+      height: result.height,
+      frames: result.frames,
+    });
+
+    var blob = new Blob([gifData], { type: "image/gif" });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.download = (v.templateId || "post") + "-" + (v.platformId || "export") + ".gif";
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    showPreviewStatus("success", "\u2713 Animated GIF downloaded! (" + Math.round(blob.size / 1024) + " KB)");
+  } catch (err) {
+    showPreviewStatus("error", "\u2717 GIF generation failed: " + err.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MP4 VIDEO EXPORT — WebCodecs + mp4-muxer
+// ═══════════════════════════════════════════════════════════════════════
+
+async function downloadMp4() {
+  if (previewVariations.length === 0) return;
+
+  // Check for WebCodecs support
+  if (typeof VideoEncoder === "undefined") {
+    showPreviewStatus("error", "\u2717 MP4 export requires Figma desktop app (WebCodecs not available in this browser).");
+    return;
+  }
+  if (!window.Mp4Muxer || !window.Mp4ArrayBufferTarget) {
+    showPreviewStatus("error", "\u2717 MP4 library not loaded. Check your connection.");
+    return;
+  }
+
+  var v = previewVariations[activeVariation];
+  showPreviewStatus("loading", '<span class="spinner"></span>Generating MP4 video...');
+
+  try {
+    var templateId = v.templateId;
+    var preset = ANIM_PRESETS[templateId] || { type: "glow", frames: 12, speed: 0.5 };
+    var fps = 30;
+    var durationSec = 3;
+    var totalFrames = fps * durationSec;
+
+    var baseImg = new Image();
+    await new Promise(function(resolve, reject) {
+      baseImg.onload = resolve;
+      baseImg.onerror = reject;
+      baseImg.src = v.dataUrl;
+    });
+
+    // Use original dimensions (or cap at 1080)
+    var scale = Math.min(1, 1080 / baseImg.width);
+    var vw = Math.round(baseImg.width * scale);
+    var vh = Math.round(baseImg.height * scale);
+    // Ensure even dimensions for H.264
+    vw = vw % 2 === 0 ? vw : vw - 1;
+    vh = vh % 2 === 0 ? vh : vh - 1;
+
+    var vidCanvas = document.createElement("canvas");
+    vidCanvas.width = vw;
+    vidCanvas.height = vh;
+    var vCtx = vidCanvas.getContext("2d");
+
+    var target = new window.Mp4ArrayBufferTarget();
+    var muxer = new window.Mp4Muxer({
+      target: target,
+      video: {
+        codec: "avc",
+        width: vw,
+        height: vh,
+      },
+      fastStart: "in-memory",
+    });
+
+    var encoder = new VideoEncoder({
+      output: function(chunk, meta) { muxer.addVideoChunk(chunk, meta); },
+      error: function(e) { console.error("VideoEncoder error:", e); },
+    });
+
+    encoder.configure({
+      codec: "avc1.42001f",
+      width: vw,
+      height: vh,
+      bitrate: 2_000_000,
+      framerate: fps,
+    });
+
+    for (var f = 0; f < totalFrames; f++) {
+      vCtx.clearRect(0, 0, vw, vh);
+      vCtx.drawImage(baseImg, 0, 0, vw, vh);
+      // Use same animation with slower progress for 3-second loop
+      var animT = f / totalFrames;
+      var animPreset = { type: preset.type, frames: totalFrames, speed: preset.speed * 0.5 };
+      renderAnimationFrame(vCtx, vw, vh, f, totalFrames, animPreset);
+
+      var vFrame = new VideoFrame(vidCanvas, {
+        timestamp: (f / fps) * 1_000_000,
+        duration: (1 / fps) * 1_000_000,
+      });
+      encoder.encode(vFrame, { keyFrame: f % 30 === 0 });
+      vFrame.close();
+    }
+
+    await encoder.flush();
+    muxer.finalize();
+
+    var mp4Blob = new Blob([target.buffer], { type: "video/mp4" });
+    var url = URL.createObjectURL(mp4Blob);
+    var link = document.createElement("a");
+    link.download = (v.templateId || "post") + "-" + (v.platformId || "export") + ".mp4";
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    showPreviewStatus("success", "\u2713 MP4 video downloaded! (" + Math.round(mp4Blob.size / 1024) + " KB)");
+  } catch (err) {
+    showPreviewStatus("error", "\u2717 MP4 generation failed: " + err.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SCHEDULING — Step 5
+// ═══════════════════════════════════════════════════════════════════════
+
+var schedulePlatforms = [];
+
+function initScheduleStep() {
+  // Populate platform checkboxes
+  var container = document.getElementById("sched-platforms");
+  var platNames = {
+    "instagram-post": "Instagram", "instagram-square": "Instagram",
+    "instagram-story": "IG Story", "twitter": "X / Twitter",
+    "linkedin": "LinkedIn", "facebook": "Facebook", "tiktok-cover": "TikTok"
+  };
+  // Deduplicate by name
+  var seen = {};
+  var platOptions = [];
+  selectedPlatforms.forEach(function(id) {
+    var name = platNames[id] || id;
+    if (!seen[name]) { seen[name] = true; platOptions.push({ id: id, name: name }); }
+  });
+  schedulePlatforms = platOptions.map(function(p) { return p.id; });
+
+  container.innerHTML = platOptions.map(function(p) {
+    return '<label class="sched-plat checked" onclick="toggleSchedPlat(this,\'' + p.id + '\')">' +
+      '<input type="checkbox" checked>' + p.name + '</label>';
+  }).join("");
+
+  // Set default date to tomorrow
+  var tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1);
+  document.getElementById("sched-date").value = tmrw.toISOString().split("T")[0];
+
+  // Copy caption from step 4 if available
+  var cap = document.getElementById("caption-text").value;
+  if (cap) document.getElementById("sched-caption").value = cap;
+  var hash = document.getElementById("hashtag-area").textContent;
+  if (hash) document.getElementById("sched-hashtags").textContent = hash;
+
+  // Load webhook URL
+  var wh = document.getElementById("webhook-url").value || webhookUrl;
+  document.getElementById("sched-webhook").value = wh;
+}
+
+function toggleSchedPlat(el, id) {
+  var idx = schedulePlatforms.indexOf(id);
+  if (idx >= 0) { schedulePlatforms.splice(idx, 1); el.classList.remove("checked"); }
+  else { schedulePlatforms.push(id); el.classList.add("checked"); }
+}
+
+function toggleScheduleTime() {
+  var isLater = document.querySelector('input[name="sched-when"]:checked').value === "later";
+  document.getElementById("schedule-datetime").classList.toggle("hidden", !isLater);
+}
+
+function showScheduleStatus(type, msg) {
+  var el = document.getElementById("schedule-msg");
+  el.className = "status-msg show " + type;
+  el.innerHTML = msg;
+}
+
+async function submitScheduledPost() {
+  var whUrl = document.getElementById("sched-webhook").value.trim();
+  var caption = document.getElementById("sched-caption").value.trim();
+  var hashtags = document.getElementById("sched-hashtags").textContent.trim();
+  var isNow = document.querySelector('input[name="sched-when"]:checked').value === "now";
+
+  // If no webhook, offer copy-to-clipboard fallback
+  if (!whUrl) {
+    if (caption || hashtags) {
+      try {
+        await navigator.clipboard.writeText(caption + "\n\n" + hashtags);
+        showScheduleStatus("success", "\u2713 Caption + hashtags copied to clipboard! Paste into your social media app.");
+      } catch (e) {
+        showScheduleStatus("error", "\u2717 No webhook URL set and clipboard copy failed. Add a Make.com/Zapier webhook in settings.");
+      }
+    } else {
+      showScheduleStatus("error", "\u2717 No webhook URL configured. Add one in Settings or paste your caption manually.");
+    }
+    return;
+  }
+
+  var scheduledAt = null;
+  if (!isNow) {
+    var dateVal = document.getElementById("sched-date").value;
+    var timeVal = document.getElementById("sched-time").value;
+    if (!dateVal || !timeVal) {
+      showScheduleStatus("error", "\u2717 Please select a date and time for scheduling.");
+      return;
+    }
+    scheduledAt = new Date(dateVal + "T" + timeVal + ":00").toISOString();
+  }
+
+  // Get image data
+  var imageData = null;
+  if (previewVariations.length > 0) {
+    imageData = previewVariations[activeVariation].dataUrl;
+  }
+
+  var payload = {
+    image: imageData,
+    caption: caption,
+    hashtags: hashtags.split(/\s+/).filter(function(h) { return h.startsWith("#"); }),
+    scheduledAt: scheduledAt,
+    postNow: isNow,
+    platforms: schedulePlatforms,
+    brandName: brandKit.brandName || brandKit.name || "Drivzu",
+    templateId: selectedTemplate,
+  };
+
+  // Show progress
+  var progressBar = document.getElementById("sched-progress");
+  var progressFill = document.getElementById("sched-progress-fill");
+  progressBar.classList.remove("hidden");
+  progressFill.style.width = "30%";
+  showScheduleStatus("loading", '<span class="spinner"></span>Sending to webhook...');
+
+  try {
+    var resp = await fetch(whUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    progressFill.style.width = "100%";
+
+    if (resp.ok) {
+      showScheduleStatus("success",
+        isNow ? "\u2713 Post sent successfully!" : "\u2713 Post scheduled for " + (scheduledAt || "now") + "!"
+      );
+    } else {
+      var errText = await resp.text().catch(function() { return "Unknown error"; });
+      showScheduleStatus("error", "\u2717 Webhook returned " + resp.status + ": " + errText);
+    }
+  } catch (err) {
+    showScheduleStatus("error", "\u2717 Failed to reach webhook: " + err.message);
+  }
+
+  setTimeout(function() { progressBar.classList.add("hidden"); }, 3000);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SETTINGS — Brand Kit, Webhook
+// ═══════════════════════════════════════════════════════════════════════
+
+function openSettings() { document.getElementById("settings-overlay").classList.add("open"); }
+function closeSettings() { document.getElementById("settings-overlay").classList.remove("open"); }
+
+function syncColorText(picker, textId) {
+  document.getElementById(textId).value = picker.value;
+}
+function syncColorPicker(textInput, pickerId) {
+  var val = textInput.value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) document.getElementById(pickerId).value = val;
+}
+
+function loadBrandKitToUI(kit) {
+  brandKit = kit;
+  document.getElementById("bk-name").value = kit.brandName || kit.name || "";
+  document.getElementById("bk-primary").value = kit.primaryColor || "#0d9488";
+  document.getElementById("bk-primary-text").value = kit.primaryColor || "#0d9488";
+  document.getElementById("bk-secondary").value = kit.secondaryColor || "#F97316";
+  document.getElementById("bk-secondary-text").value = kit.secondaryColor || "#F97316";
+  document.getElementById("bk-accent").value = kit.accentColor || "#14b8a6";
+  document.getElementById("bk-accent-text").value = kit.accentColor || "#14b8a6";
+  document.getElementById("bk-dark").value = kit.darkColor || "#0f172a";
+  document.getElementById("bk-dark-text").value = kit.darkColor || "#0f172a";
+  document.getElementById("bk-light").value = kit.lightColor || "#f0fdfa";
+  document.getElementById("bk-light-text").value = kit.lightColor || "#f0fdfa";
+  document.getElementById("bk-industry").value = kit.industry || "";
+  document.getElementById("bk-voice").value = kit.voiceTone || "";
+
+  var fontSel = document.getElementById("bk-font");
+  for (var i = 0; i < fontSel.options.length; i++) {
+    if (fontSel.options[i].text === (kit.fontFamily || "Plus Jakarta Sans")) {
+      fontSel.selectedIndex = i; break;
+    }
+  }
+
+  // Load custom logo if present
+  if (kit.logoBase64) {
+    setCustomLogo(kit.logoBase64);
+    var preview = document.getElementById("bk-logo-preview");
+    preview.src = kit.logoBase64;
+    preview.style.display = "block";
+    document.getElementById("bk-logo-clear").style.display = "block";
+    document.getElementById("bk-logo-area").textContent = "Custom logo loaded";
+  } else {
+    document.getElementById("bk-logo-preview").style.display = "none";
+    document.getElementById("bk-logo-clear").style.display = "none";
+  }
+
+  // Load brand font if not default
+  if (kit.fontFamily && kit.fontFamily !== "Plus Jakarta Sans") {
+    loadGoogleFont(kit.fontFamily);
+  }
+}
+
+function saveBrandKit() {
+  var kit = {
+    name: document.getElementById("bk-name").value || "Drivzu",
+    primaryColor: document.getElementById("bk-primary").value,
+    secondaryColor: document.getElementById("bk-secondary").value,
+    accentColor: document.getElementById("bk-accent").value,
+    darkColor: document.getElementById("bk-dark").value,
+    lightColor: document.getElementById("bk-light").value,
+    brandName: document.getElementById("bk-name").value,
+    fontFamily: document.getElementById("bk-font").value,
+    industry: document.getElementById("bk-industry").value,
+    voiceTone: document.getElementById("bk-voice").value,
+    logoBase64: brandKit.logoBase64 || null,
+  };
+  brandKit = kit;
+  // Load new font if changed
+  if (kit.fontFamily && kit.fontFamily !== "Plus Jakarta Sans") {
+    loadGoogleFont(kit.fontFamily);
+  }
+  parent.postMessage({ pluginMessage: { type: "save-brand-kit", brandKit: kit } }, "*");
+  closeSettings();
+}
+
+function resetBrandKit() {
+  parent.postMessage({ pluginMessage: { type: "reset-brand-kit" } }, "*");
+}
+
+function saveWebhook() {
+  var url = document.getElementById("webhook-url").value.trim();
+  webhookUrl = url;
+  parent.postMessage({ pluginMessage: { type: "save-webhook-url", webhookUrl: url } }, "*");
+}
+
+// ── Logo Upload ─────────────────────────────────────────────────────
+function handleLogoUpload(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    alert("Logo file too large (max 2MB)");
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var dataUrl = e.target.result;
+    brandKit.logoBase64 = dataUrl;
+    setCustomLogo(dataUrl);
+    var preview = document.getElementById("bk-logo-preview");
+    preview.src = dataUrl;
+    preview.style.display = "block";
+    document.getElementById("bk-logo-clear").style.display = "block";
+    document.getElementById("bk-logo-area").textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearLogo() {
+  brandKit.logoBase64 = null;
+  logoImages.custom = null;
+  document.getElementById("bk-logo-preview").style.display = "none";
+  document.getElementById("bk-logo-clear").style.display = "none";
+  var area = document.getElementById("bk-logo-area");
+  area.innerHTML = 'Upload Logo<input type="file" accept="image/png,image/jpeg,image/webp" id="bk-logo-input" style="display:none" onchange="handleLogoUpload(this)" />';
+}
+
+function setCustomLogo(src) {
+  if (!src) { logoImages.custom = null; return; }
+  var img = new Image();
+  img.onload = function() { logoImages.custom = img; };
+  img.src = src.startsWith("data:") ? src : "data:image/png;base64," + src;
+}
+
+// ── Dynamic Google Font Loading ─────────────────────────────────────
+var loadedFonts = { "Plus Jakarta Sans": true };
+
+function loadGoogleFont(family) {
+  if (!family || loadedFonts[family]) return Promise.resolve();
+  loadedFonts[family] = true;
+  var link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = "https://fonts.googleapis.com/css2?family=" +
+    encodeURIComponent(family) + ":wght@400;500;600;700;800;900&display=swap";
+  document.head.appendChild(link);
+  return document.fonts.ready;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STATUS MESSAGES
+// ═══════════════════════════════════════════════════════════════════════
 
 function showStatus(type, msg) {
   var el = document.getElementById("status-msg");
@@ -617,7 +2387,26 @@ function showStatus(type, msg) {
   el.innerHTML = msg;
 }
 
-// ── Plugin Messages ─────────────────────────────────────────────────
+function showPreviewStatus(type, msg) {
+  var el = document.getElementById("preview-msg");
+  el.className = "status-msg show " + type;
+  el.innerHTML = msg;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// LOGO LOADING
+// ═══════════════════════════════════════════════════════════════════════
+
+function loadLogoImage(base64Data, key) {
+  if (!base64Data) return;
+  var img = new Image();
+  img.onload = function() { logoImages[key] = img; };
+  img.src = "data:image/png;base64," + base64Data;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PLUGIN MESSAGE HANDLER
+// ═══════════════════════════════════════════════════════════════════════
 
 onmessage = function(event) {
   var msg = event.data.pluginMessage;
@@ -625,6 +2414,24 @@ onmessage = function(event) {
 
   if (msg.type === "fonts-loaded") {
     if (msg.usingFallback) console.warn("Fallback font:", msg.family);
+
+  } else if (msg.type === "logo-data") {
+    loadLogoImage(msg.motionCombo, "motionCombo");
+    loadLogoImage(msg.wordmark, "wordmark");
+    loadLogoImage(msg.monogram, "monogram");
+
+  } else if (msg.type === "init-settings") {
+    if (msg.hasKey) {
+      storedApiKey = msg.keyPreview || "set";
+      var st = document.getElementById("key-status");
+      st.className = "api-key-status connected";
+      st.textContent = "Connected " + (msg.keyPreview || "");
+    }
+    if (msg.brandKit) loadBrandKitToUI(msg.brandKit);
+    if (msg.webhookUrl) {
+      webhookUrl = msg.webhookUrl;
+      document.getElementById("webhook-url").value = msg.webhookUrl;
+    }
 
   } else if (msg.type === "api-key-status") {
     var status = document.getElementById("key-status");
@@ -641,10 +2448,20 @@ onmessage = function(event) {
     if (msg.apiKey) {
       document.getElementById("api-key-input").value = msg.apiKey;
       storedApiKey = msg.apiKey;
-      var st = document.getElementById("key-status");
-      st.className = "api-key-status connected";
-      st.textContent = "Connected";
+      var kst = document.getElementById("key-status");
+      kst.className = "api-key-status connected";
+      kst.textContent = "Connected";
     }
+
+  } else if (msg.type === "brand-kit-loaded" || msg.type === "brand-kit-saved") {
+    if (msg.brandKit) loadBrandKitToUI(msg.brandKit);
+
+  } else if (msg.type === "webhook-saved") {
+    // Webhook saved successfully
+
+  } else if (msg.type === "webhook-loaded") {
+    webhookUrl = msg.webhookUrl || "";
+    document.getElementById("webhook-url").value = webhookUrl;
 
   } else if (msg.type === "content-suggestion") {
     currentContentOptions = msg.allOptions || [];
@@ -652,38 +2469,87 @@ onmessage = function(event) {
     fillFormWithContent(msg.content);
 
   } else if (msg.type === "start-ai-generation") {
+    // Main.ts validated API key, now call Gemini from UI iframe
+    storedApiKey = msg.apiKey; // Store full key for caption generation
+    if (msg.brandKit) brandKit = msg.brandKit;
     var platforms = msg.platforms;
     var total = platforms.length;
     var content = msg.content;
+    var apiKey = msg.apiKey;
 
-    platforms.forEach(function(plat, idx) {
-      var aspectMap = {
-        "instagram-post": "4:5", "instagram-square": "1:1", "instagram-story": "9:16",
-        "twitter": "16:9", "linkedin": "16:9", "facebook": "4:5", "tiktok-cover": "9:16"
-      };
-      var ar = aspectMap[plat.id] || "4:5";
-
-      // Stagger API calls slightly to avoid rate limits
-      setTimeout(function() {
-        parent.postMessage({ pluginMessage: {
-          type: "get-ai-prompt", templateId: msg.templateId,
-          platformId: plat.id, content: content,
-        }}, "*");
-      }, idx * 500);
-    });
+    // If we're on step 4 (preview mode), show loading
+    if (currentStep === 4) {
+      document.getElementById("preview-loading").classList.remove("hidden");
+      document.getElementById("preview-result").classList.add("hidden");
+    }
 
     // Store context for prompt callbacks
-    window._aiContext = { apiKey: msg.apiKey, templateId: msg.templateId, content: content, total: total, idx: 0 };
+    window._aiContext = { apiKey: apiKey, templateId: msg.templateId, content: content, total: total, idx: 0 };
 
-  } else if (msg.type === "ai-prompt-ready") {
-    var ctx = window._aiContext;
-    if (!ctx) return;
     var aspectMap = {
       "instagram-post": "4:5", "instagram-square": "1:1", "instagram-story": "9:16",
       "twitter": "16:9", "linkedin": "16:9", "facebook": "4:5", "tiktok-cover": "9:16"
     };
-    callGeminiApi(
-      ctx.apiKey, msg.prompt,
+
+    // Custom post mode — generate prompt from user's description via AI
+    if (msg.templateId === "custom-post" && content.customIdea) {
+      showPreviewStatus("ai-loading", '<span class="spinner ai"></span>AI is designing your custom prompt...');
+      generateCustomDesignPrompt(apiKey, content.customIdea, content.customMood || "Professional", platforms[0].id)
+        .then(function(customPrompt) {
+          if (!customPrompt) {
+            showPreviewStatus("error", "\u2717 Could not generate design prompt. Try again.");
+            return;
+          }
+          // Fire image generation for each platform using the custom prompt
+          platforms.forEach(function(plat, idx) {
+            setTimeout(function() {
+              callGeminiImage(
+                apiKey, customPrompt,
+                aspectMap[plat.id] || "4:5",
+                plat.id, msg.templateId, content,
+                idx, total
+              );
+            }, idx * 500);
+          });
+        });
+    } else {
+      // Standard template mode — get hardcoded prompt from plugin sandbox
+      platforms.forEach(function(plat, idx) {
+        setTimeout(function() {
+          parent.postMessage({ pluginMessage: {
+            type: "get-ai-prompt", templateId: msg.templateId,
+            platformId: plat.id, content: content,
+          }}, "*");
+        }, idx * 500);
+      });
+    }
+
+  } else if (msg.type === "ai-prompt-ready") {
+    var ctx = window._aiContext;
+    if (!ctx) return;
+    // Inject brand colors into prompt (replace default Drivzu colors with brand kit)
+    var prompt = msg.prompt;
+    if (brandKit.primaryColor && brandKit.primaryColor !== "#0d9488") {
+      prompt = prompt.split("#0d9488").join(brandKit.primaryColor);
+    }
+    if (brandKit.secondaryColor && brandKit.secondaryColor !== "#F97316") {
+      prompt = prompt.split("#F97316").join(brandKit.secondaryColor);
+    }
+    if (brandKit.accentColor && brandKit.accentColor !== "#14b8a6") {
+      prompt = prompt.split("#14b8a6").join(brandKit.accentColor);
+    }
+    if (brandKit.darkColor && brandKit.darkColor !== "#0f172a") {
+      prompt = prompt.split("#0f172a").join(brandKit.darkColor);
+    }
+    if (brandKit.lightColor && brandKit.lightColor !== "#f0fdfa") {
+      prompt = prompt.split("#f0fdfa").join(brandKit.lightColor);
+    }
+    var aspectMap = {
+      "instagram-post": "4:5", "instagram-square": "1:1", "instagram-story": "9:16",
+      "twitter": "16:9", "linkedin": "16:9", "facebook": "4:5", "tiktok-cover": "9:16"
+    };
+    callGeminiImage(
+      ctx.apiKey, prompt,
       aspectMap[msg.platformId] || "4:5",
       msg.platformId, msg.templateId, ctx.content,
       ctx.idx, ctx.total
@@ -691,19 +2557,27 @@ onmessage = function(event) {
     ctx.idx++;
 
   } else if (msg.type === "success") {
-    showStatus("success", "\u2728 " + msg.message);
-    document.getElementById("btn-next").textContent = "Generate Again \u2728";
+    if (currentStep !== 4) {
+      showStatus("success", "\u2728 " + msg.message);
+    }
 
   } else if (msg.type === "error") {
     showStatus("error", "\u2717 " + msg.message);
+    if (currentStep === 4) showPreviewStatus("error", "\u2717 " + msg.message);
 
   } else if (msg.type === "status" && msg.status === "generating") {
     showStatus("loading", '<span class="spinner"></span>Generating...');
   }
 };
 
+// ═══════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════
+
 renderPlatforms();
 updateButtons();
+// Request full API key on init (needed for caption generation)
+parent.postMessage({ pluginMessage: { type: "get-api-key" } }, "*");
 </script>
 </body>
 </html>
